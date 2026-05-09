@@ -328,7 +328,7 @@ export default function SessionScreen() {
       {/* Main content */}
       <div className="flex flex-col items-center max-w-md w-full mt-16">
         {/* Sheep icon with state-dependent glow */}
-        <div className="relative mb-12 flex justify-center items-center">
+        <div className="relative mb-12 flex justify-center items-center pointer-events-none">
           {isSpeaking && (
             <div className="absolute inset-0 bg-primary/8 rounded-full blur-3xl animate-breathe scale-[2.5]" />
           )}
@@ -338,7 +338,7 @@ export default function SessionScreen() {
           <img
             src="/sheep-mascot.png"
             alt="Sleeping Sheep"
-            className={`w-96 h-96 object-contain drop-shadow-2xl transition-all duration-1000 relative z-10 ${
+            className={`w-96 h-96 object-contain drop-shadow-2xl transition-all duration-1000 relative ${
               isSpeaking
                 ? "animate-float"
                 : isListening
@@ -358,7 +358,7 @@ export default function SessionScreen() {
         </div>
 
         {/* Input area / state display */}
-        <div className="mt-8 w-full min-h-[100px] flex flex-col items-center justify-start">
+        <div className="mt-8 w-full min-h-[100px] flex flex-col items-center justify-start relative z-20">
           {isTextInput ? (
             <div className="w-full flex items-center gap-2">
               <Input

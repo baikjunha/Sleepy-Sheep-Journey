@@ -59,9 +59,9 @@ export default function Home() {
 
       <div className="z-10 flex flex-col items-center max-w-sm w-full text-center space-y-12">
         {/* Sheep icon with glow */}
-        <div className="relative">
+        <div className="relative pointer-events-none">
           <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[3] animate-breathe" />
-          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[480px] h-[480px] relative z-10 animate-float object-contain drop-shadow-2xl" />
+          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[480px] h-[480px] relative animate-float object-contain drop-shadow-2xl" />
         </div>
 
         {/* Title block */}
@@ -78,7 +78,7 @@ export default function Home() {
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col space-y-3 w-full pt-2">
+        <div className="flex flex-col space-y-3 w-full pt-2 relative z-20">
           <Button
             onClick={handleStart}
             disabled={isStarting}

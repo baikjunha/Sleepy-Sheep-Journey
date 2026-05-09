@@ -290,10 +290,40 @@ export default function SessionScreen() {
   const currentStepNum = getStepNumber(currentState);
   const totalSteps = 6;
 
+  const SESSION_STARS = Array.from({ length: 30 }).map((_, i) => ({
+    id: i,
+    size: Math.random() * 2 + 0.5,
+    top: Math.random() * 100,
+    left: Math.random() * 100,
+    opacity: Math.random() * 0.2 + 0.05,
+    duration: Math.random() * 5 + 4,
+    delay: Math.random() * 5,
+  }));
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/8 via-background to-background pointer-events-none" />
+
+      {/* Stars */}
+      {SESSION_STARS.map((star) => (
+        <div
+          key={star.id}
+          className="star"
+          style={{
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            top: `${star.top}%`,
+            left: `${star.left}%`,
+            opacity: star.opacity,
+            animationDuration: `${star.duration}s`,
+            animationDelay: `${star.delay}s`,
+          }}
+        />
+      ))}
+
       {/* Top bar: step indicator + input toggle */}
-      <div className="absolute top-0 left-0 right-0 px-6 pt-8 flex items-center justify-between z-10">
+      <div className="w-full px-6 pt-8 flex items-center justify-between z-20 relative">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5 items-center">
             {Array.from({ length: totalSteps }).map((_, i) => (
@@ -325,40 +355,40 @@ export default function SessionScreen() {
         </Button>
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-col items-center max-w-md w-full mt-16">
-        {/* Sheep icon with state-dependent glow */}
-        <div className="relative mb-12 flex justify-center items-center pointer-events-none">
-          {isSpeaking && (
-            <div className="absolute inset-0 bg-primary/8 rounded-full blur-3xl animate-breathe scale-[2.5]" />
-          )}
-          {isListening && (
-            <div className="absolute inset-0 bg-emerald-500/6 rounded-full blur-3xl animate-breathe scale-[2.2]" />
-          )}
-          <img
-            src="/sheep-mascot.png"
-            alt="Sleeping Sheep"
-            className={`w-96 max-w-full max-h-[35vh] h-auto object-contain drop-shadow-2xl transition-all duration-1000 relative ${
-              isSpeaking
-                ? "animate-float"
-                : isListening
-                  ? "opacity-80"
-                  : isProcessing
-                    ? "animate-pulse opacity-60"
-                    : "opacity-40"
-            }`}
-          />
-        </div>
+      {/* Sheep image — large, decorative, behind content */}
+      <div className="relative flex justify-center items-center pointer-events-none mt-4 mb-[-60px]">
+        {isSpeaking && (
+          <div className="absolute inset-0 bg-primary/8 rounded-full blur-3xl animate-breathe scale-[2]" />
+        )}
+        {isListening && (
+          <div className="absolute inset-0 bg-emerald-500/6 rounded-full blur-3xl animate-breathe scale-[1.8]" />
+        )}
+        <img
+          src="/sheep-mascot.png"
+          alt="Sleeping Sheep"
+          className={`w-[70vw] max-w-[420px] h-auto object-contain drop-shadow-2xl transition-all duration-1000 ${
+            isSpeaking
+              ? "animate-float"
+              : isListening
+                ? "opacity-80"
+                : isProcessing
+                  ? "animate-pulse opacity-60"
+                  : "opacity-50"
+          }`}
+        />
+      </div>
 
+      {/* Text + controls */}
+      <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full px-6 relative z-10">
         {/* Sheep text */}
-        <div className="min-h-[140px] w-full text-center flex flex-col justify-center px-4">
+        <div className="min-h-[120px] w-full text-center flex flex-col justify-center">
           <p className="text-lg font-serif leading-loose text-foreground/80 transition-opacity duration-700">
             {sheepText}
           </p>
         </div>
 
         {/* Input area / state display */}
-        <div className="mt-8 w-full min-h-[100px] flex flex-col items-center justify-start relative z-20">
+        <div className="mt-6 w-full min-h-[80px] flex flex-col items-center justify-start relative z-20">
           {isTextInput ? (
             <div className="w-full flex items-center gap-2">
               <Input

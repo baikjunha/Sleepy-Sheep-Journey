@@ -57,13 +57,13 @@ export default function Home() {
         />
       ))}
 
-      <div className="z-10 flex flex-col items-center max-w-sm w-full text-center space-y-12">
-        {/* Sheep icon with glow */}
-        <div className="relative pointer-events-none">
-          <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[3] animate-breathe" />
-          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[480px] max-w-full max-h-[40vh] h-auto relative animate-float object-contain drop-shadow-2xl" />
-        </div>
+      {/* Sheep image — large, decorative */}
+      <div className="relative pointer-events-none z-0 mt-8 mb-[-40px]">
+        <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[2] animate-breathe" />
+        <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[70vw] max-w-[420px] h-auto relative animate-float object-contain drop-shadow-2xl" />
+      </div>
 
+      <div className="z-10 flex flex-col items-center max-w-sm w-full text-center space-y-12">
         {/* Title block */}
         <div className="space-y-4">
           <h1 className="text-xs tracking-[0.35em] text-muted-foreground/50 font-sans font-light uppercase">

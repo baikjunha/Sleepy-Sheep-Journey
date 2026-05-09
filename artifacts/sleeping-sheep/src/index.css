@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* We force dark mode for this app. So root and .dark will share the same dark indigo palette. */
+:root, .dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+
+  --opaque-button-border-intensity: 9;
+
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  /* Deep Indigo / Navy Background */
+  --background: 230 40% 8%; 
+  --foreground: 230 20% 90%; 
+
+  --border: 230 30% 15%; 
+
+  --card: 230 40% 10%; 
+  --card-foreground: 230 20% 90%; 
+  --card-border: 230 30% 18%; 
+
+  --popover: 230 40% 10%; 
+  --popover-foreground: 230 20% 90%; 
+  --popover-border: 230 30% 18%; 
+
+  --primary: 230 60% 70%; 
+  --primary-foreground: 230 40% 10%; 
+
+  --secondary: 230 30% 20%; 
+  --secondary-foreground: 230 20% 90%; 
+
+  --muted: 230 30% 15%; 
+  --muted-foreground: 230 20% 60%; 
+
+  --accent: 230 30% 25%; 
+  --accent-foreground: 230 20% 90%; 
+
+  --destructive: 0 50% 50%; 
+  --destructive-foreground: 0 0% 100%; 
+
+  --input: 230 30% 20%; 
+  --ring: 230 60% 70%; 
+
+  --app-font-sans: 'Noto Sans KR', sans-serif;
+  --app-font-serif: 'Noto Serif KR', 'Georgia', serif;
+  --app-font-mono: Menlo, monospace;
+  --radius: 1rem; 
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-serif antialiased bg-background text-foreground selection:bg-primary selection:text-primary-foreground;
+    /* Force dark mode */
+    color-scheme: dark;
+  }
+}
+
+/* Stars animation for sleep screen */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+
+.star {
+  position: absolute;
+  background-color: white;
+  border-radius: 50%;
+  animation: twinkle var(--duration, 4s) infinite ease-in-out;
+}

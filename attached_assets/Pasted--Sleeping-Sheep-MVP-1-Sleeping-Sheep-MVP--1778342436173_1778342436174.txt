@@ -1,0 +1,973 @@
+# Sleeping Sheep MVP 제품+기술 개발 명세서
+
+## 1. 문서 목적
+
+이 문서는 Sleeping Sheep MVP를 다시 정의하기 위한 제품+기술 명세서다.
+
+이번 MVP의 중심은 자유 상담 챗봇이 아니다.
+핵심은 사용자가 잠들기 전 음성으로 하루를 회고하고, STT로 변환된 사용자와 양의 전체 대화 텍스트를 저장한 뒤, 그 원문 대화 데이터를 기반으로 다음날 확인할 수 있는 감정 양을 생성하는 경험이다.
+
+대화 흐름은 LLM이 자유롭게 정하지 않는다.
+대화 스크립트는 본 문서의 Step 1~6으로 고정한다.
+AI는 정해진 대화 흐름 안에서 짧은 공감, 요약, 분기 판단, 양 생성 스펙 작성에만 사용한다.
+
+## 2. MVP 핵심 목표
+
+1. 사용자는 잠들기 전 수면 시작 버튼을 누른다.
+2. 앱은 차분한 음성으로 고정된 회고 시나리오를 진행한다.
+3. 사용자는 음성으로 답한다.
+4. 사용자의 음성은 STT로 텍스트화된다.
+5. 양의 발화와 사용자의 발화 텍스트 전체를 순서대로 저장한다.
+6. 세션 종료 후 저장된 전체 대화 텍스트를 기반으로 양 생성 스펙을 만든다.
+7. 양 생성 스펙을 이미지 생성 API에 넣어 감정 양 이미지를 생성한다.
+8. 사용자는 다음날 또는 세션 후 생성된 양을 확인한다.
+
+## 3. 이번 MVP에서 확정된 원칙
+
+### 3.1 저장 원칙
+
+- 원본 음성 파일은 저장하지 않는다.
+- STT로 변환된 사용자 발화 텍스트는 저장한다.
+- 양이 말한 텍스트도 저장한다.
+- 사용자와 양의 전체 대화 텍스트를 세션 단위로 보존한다.
+- 저장된 전체 대화 텍스트는 양 생성에 사용한다.
+
+### 3.2 대화 원칙
+
+- 대화 스크립트는 Step 1~6이 전부다.
+- LLM이 임의로 질문을 추가하거나 흐름을 바꾸지 않는다.
+- 모든 출력은 수면 전 맥락에 맞게 낮은 자극이어야 한다.
+- 느낌표를 쓰지 않는다.
+- 사용자를 깨우는 높은 텐션, 과도한 위로, 장황한 설명을 피한다.
+- 사용자가 애매하게 답하면 캐묻지 않고 다음 단계로 넘긴다.
+- 사용자가 잠든 것처럼 보이면 더 묻지 않고 수면음 모드로 전환한다.
+
+### 3.3 음성 원칙
+
+- 대화 스크립트를 읽어줄 TTS 레이어가 반드시 필요하다.
+- 사용자의 답변을 받을 STT 레이어가 반드시 필요하다.
+- 대화 엔진과 음성 엔진은 분리한다.
+- 대화 엔진은 “무엇을 말할지”를 결정한다.
+- 음성 엔진은 “어떻게 듣고 읽을지”를 담당한다.
+
+## 4. 서비스 흐름
+
+### 4.1 사용자 흐름
+
+1. 사용자가 앱을 연다.
+2. 사용자가 수면 시작 버튼을 누른다.
+3. 앱이 마이크 권한과 음성 안내를 준비한다.
+4. 양이 “오늘 하루는 어떠셨나요.”라고 말한다.
+5. 사용자가 음성으로 답한다.
+6. 앱은 정해진 Step 1~6에 따라 회고 대화를 진행한다.
+7. 각 턴마다 사용자 발화와 양 발화를 텍스트로 저장한다.
+8. 세션이 끝나면 화면은 암전되고 수면음 모드로 넘어간다.
+9. 백엔드 또는 후처리 함수가 전체 transcript로 양 생성 스펙을 만든다.
+10. 이미지 생성 API가 감정 양 이미지를 만든다.
+11. 생성된 양은 세션에 연결되어 저장된다.
+
+### 4.2 시스템 흐름
+
+1. `Session` 생성
+2. `VoiceSpeaker.speak(openingText)`
+3. `VoiceListener.listen()` 시작
+4. STT 결과 수신
+5. `TranscriptTurn(role=user)` 저장
+6. 현재 Step 상태에 따라 다음 agent text 생성
+7. `TranscriptTurn(role=sheep)` 저장
+8. `VoiceSpeaker.speak(agentText)`
+9. 다음 Step으로 이동
+10. 종료 시 `generateSheepSpec(sessionTranscript)` 호출
+11. `generateSheepImage(sheepSpec)` 호출
+12. `Sheep` 저장
+
+## 5. 고정 대화 스크립트
+
+이 섹션이 대화 엔진의 단일 진실 원본이다.
+구현자는 이 흐름 외의 질문이나 단계를 추가하지 않는다.
+
+## 5.1 시스템 공통 제약 조건
+
+대화 중 사용자 답변 대기 상태가 될 때마다 시스템은 아래의 4가지 최우선 제약 조건을 따른다.
+
+### 5.1.1 수면 맥락형 STT 타임아웃
+
+사용자의 인지 속도가 느려짐을 감안하여, 단어 사이 침묵 대기 시간인 Silence Timeout을 일반 챗봇보다 길게 둔다.
+
+- 권장값: 3.5초~5초
+- 목적: 사용자가 천천히 말할 때 발화가 중간에 끊기지 않게 한다.
+- 예: “음... 오늘은... 좀...” 같은 발화를 너무 빨리 종료하지 않는다.
+
+### 5.1.2 애매함/회피 = Skip 강제 분기
+
+사용자가 다음과 같이 대답하면 캐묻지 않는다.
+
+- “글쎄.”
+- “잘 모르겠어.”
+- “애매하네.”
+- “딱히 없어.”
+- “없는 것 같아.”
+- “모르겠어.”
+
+이 경우 모델이 완결성이나 명확성을 낮게 판별한 것으로 보고, 무조건 `없다` 분기로 태워 다음 Step으로 유연하게 넘긴다.
+
+### 5.1.3 수면 자동 전환
+
+각 Step에서 15초~20초간 어떠한 음성 입력도 감지되지 않으면 사용자가 잠든 것으로 간주한다.
+
+이때 시스템은 즉시 대기 상태를 해제하고, 부드러운 목소리로 아래 문장만 출력한다.
+
+> 편안한 밤 되세요.
+
+그 후 즉시 Step 6의 수면음 모드로 강제 전환한다.
+Auto-Fallback으로 Step 6에 들어온 경우에는 정상 엔딩 멘트를 생략한다.
+
+### 5.1.4 차분한 톤앤매너
+
+- 모든 출력 문장에서 느낌표 사용 금지
+- 마침표로 끝나는 안정적인 문장 사용
+- 텐션을 높이지 않기
+- 심야 라디오 DJ처럼 낮고 일정한 톤 유지
+- TTS 속도 권장값: 0.8배속
+- 과도한 감탄, 과도한 칭찬, 과도한 분석 금지
+
+## 5.2 Step 1. 오프닝
+
+목적: 사용자의 현재 하루 상태를 부드럽게 확인한다.
+
+에이전트 발화:
+
+> 오늘 하루는 어떠셨나요.
+
+처리:
+
+- 사용자 답변 대기
+- 무응답 시 Auto-Fallback 작동
+- 사용자 답변은 `TranscriptTurn(role=user, step=1)`로 저장
+
+다음 단계:
+
+- 사용자 답변이 있으면 Step 2로 이동
+- 무응답이면 Step 6 수면음 모드로 이동
+
+## 5.3 Step 2. 인지적 덤프
+
+목적: 사용자가 잠들기 전 머릿속에 남은 미해결 문제를 하나만 밖으로 꺼내게 한다.
+
+에이전트 내부 로직:
+
+1. Step 1 사용자 답변에 대해 1~2문장으로 짧게 공감한다.
+2. 반드시 “오늘 하루도 고생 많으셨습니다.”라는 문장으로 마무리한다.
+3. 그 후 아래 질문을 출력한다.
+
+에이전트 발화 템플릿:
+
+> [공감 및 마무리 문장]. 머릿속을 가볍게 비우고 잠에 들기 위해, 가장 신경 쓰였지만 해결하지 못한 문제 딱 하나만 편하게 말씀해 주시겠어요. 없으시다면 '없다'라고 편하게 이야기해 주세요.
+
+분기:
+
+- 답변이 `있다` 계열이면 Step 3 진행
+- 답변이 `없다` 계열이면 Step 3 건너뛰고 Step 4 진행
+- 답변이 애매함/회피 계열이면 `없다` 분기로 처리하고 Step 4 진행
+- 무응답이면 Auto-Fallback 작동
+
+저장:
+
+- 양 발화는 `TranscriptTurn(role=sheep, step=2)`로 저장
+- 사용자 답변은 `TranscriptTurn(role=user, step=2)`로 저장
+
+## 5.4 Step 3. 통제권 분류
+
+목적: 고민을 지금 해결할 일, 내일로 넘길 일, 당장 통제할 수 없는 일로 가볍게 정리한다.
+
+에이전트 내부 로직:
+
+1. 사용자가 말한 고민을 간결하게 요약한다.
+2. 짧게 공감한다.
+3. 아래 질문을 출력한다.
+
+에이전트 발화 템플릿:
+
+> [요약 및 마무리 문장]. 적어주신 그 문제는 지금 당장 해결할 수 있는 일인가요. 만약 당장 해결하기 어렵다면 왜 그런지, 반대로 내일 해결할 수 있다면 내일 아침 가장 먼저 해볼 아주 작은 행동 하나만 알려주세요.
+
+처리:
+
+- 사용자 답변 대기
+- 무응답 시 Auto-Fallback 작동
+- 애매한 답변이어도 캐묻지 않고 Step 4로 이동
+
+저장:
+
+- 양 발화는 `TranscriptTurn(role=sheep, step=3)`로 저장
+- 사용자 답변은 `TranscriptTurn(role=user, step=3)`로 저장
+
+다음 단계:
+
+- Step 4로 이동
+
+## 5.5 Step 4. 심리적 안전기지
+
+목적: 사용자가 하루를 완전히 실패로만 기억하지 않도록 아주 작은 성취를 하나 찾게 한다.
+
+에이전트 내부 로직:
+
+- Step 3에서 넘어온 경우, Step 3 사용자 답변을 간결하게 요약한다.
+- 요약 후 “공유해 주셔서 감사합니다.”로 마무리한다.
+- Step 2에서 바로 넘어온 경우에는 요약을 생략한다.
+
+에이전트 발화 템플릿:
+
+> [요약 및 마무리 문장 - 해당 시]. 다음으로는 오늘 스스로에게 '잘했다'고 칭찬해 주고 싶은 아주 작은 성취가 있다면 하나만 공유해 주세요. 정말 작아도 좋고, 만약 떠오르지 않는다면 '없다'고 쿨하게 넘어가셔도 좋습니다.
+
+처리:
+
+- 사용자 답변 대기
+- 무응답 시 Auto-Fallback 작동
+- `없다` 또는 애매함/회피 답변이면 없음으로 처리하고 Step 5 진행
+- 구체적 답변이 있으면 성취 있음으로 처리하고 Step 5 진행
+
+저장:
+
+- 양 발화는 `TranscriptTurn(role=sheep, step=4)`로 저장
+- 사용자 답변은 `TranscriptTurn(role=user, step=4)`로 저장
+
+## 5.6 Step 5. 감정 환기
+
+목적: 회고의 마지막을 웃음, 상상, 가벼운 긍정 정서 쪽으로 이동시킨다.
+
+에이전트 내부 로직:
+
+Step 4 답변이 `없다` 계열이면 아래 조건부 메시지를 사용한다.
+
+> 매일 무언가를 이뤄낸다는 건 어려운 일이에요. 괜찮습니다.
+
+Step 4 답변이 구체적 성취를 포함하면 성취를 간결히 요약하며 긍정적으로 지지한다.
+
+에이전트 발화 템플릿:
+
+> [조건부 메시지]. 오늘 하루를 돌아보며 픽 웃음이 났던 순간이 있었나요. 없으셨다면, 어떤 일이 일어났을 때 가장 기분 좋게 웃으실 수 있을지 자유롭게 상상해서 말씀해 주세요.
+
+처리:
+
+- 사용자 답변 대기
+- 무응답 시 Auto-Fallback 작동
+- 답변이 없거나 애매해도 캐묻지 않고 Step 5.5로 이동
+
+저장:
+
+- 양 발화는 `TranscriptTurn(role=sheep, step=5)`로 저장
+- 사용자 답변은 `TranscriptTurn(role=user, step=5)`로 저장
+
+## 5.7 Step 5.5. 긍정 감정 연결 및 인지 셔플링
+
+목적: 사용자가 떠올린 웃음 포인트나 상상 이미지를 서비스 세계관의 “오늘의 양”으로 자연스럽게 연결한다.
+
+에이전트 내부 로직:
+
+1. 사용자가 묘사한 웃음 포인트나 상상에 대해 짧게 공감한다.
+2. “새로운 양”이라는 서비스 세계관으로 자연스럽게 화제를 전환한다.
+3. 사용자가 양에게 입히고 싶은 색깔이나 촉감을 하나 고르게 한다.
+
+에이전트 발화 템플릿:
+
+> [사용자 답변에 대한 짧은 공감]. 떠올려주신 기억에 기분 좋은 에너지를 담아, 오늘 밤 사용자님을 지켜줄 예쁜 양을 한 마리 만들려고 해요. 이 양에게 가장 입혀주고 싶은 포근한 색깔이나 촉감이 있다면 하나만 골라주시겠어요.
+
+처리:
+
+- 사용자 답변 대기
+- 무응답 시 Auto-Fallback 작동
+- 색깔, 촉감, 분위기, 물건, 이미지 표현 모두 허용
+- 애매한 답변이면 기본값을 사용한다.
+
+기본값:
+
+- 색감: 따뜻한 크림색
+- 촉감: 부드러운 양털
+- 분위기: 조용하고 포근함
+
+저장:
+
+- 양 발화는 `TranscriptTurn(role=sheep, step=5.5)`로 저장
+- 사용자 답변은 `TranscriptTurn(role=user, step=5.5)`로 저장
+
+## 5.8 Step 6. 최종 마무리 및 수면 모드 전환
+
+목적: 대화 입력을 끝내고 수면음 모드로 전환한다.
+
+정상 진행 시 내부 로직:
+
+1. 사용자가 고른 색깔 또는 촉감을 반영한다.
+2. 엔딩 멘트를 출력한다.
+3. 즉시 텍스트 입력을 차단한다.
+4. 수면음 모드로 시스템을 전환한다.
+
+정상 진행 시 에이전트 발화:
+
+> [사용자가 고른 색깔/촉감]을 가진 양이라니, 정말 귀엽고 포근하겠네요. 이제 수면음 모드로 전환하겠습니다. 오늘도 저희에게 전달해주신 이야기로 새로운 양이 만들어질 거예요. 주무시고 일어나시면 보실 수 있을 겁니다. 새로운 양을 보내주셔서 감사합니다. 오늘 하루도 고생하셨어요.
+
+Auto-Fallback 작동 시 내부 로직:
+
+1. 앞선 Step에서 무응답으로 넘어온 경우 엔딩 멘트를 생략한다.
+2. “편안한 밤 되세요.”만 출력한다.
+3. 즉시 수면음 모드로 전환한다.
+
+수면 모드 전환:
+
+- 화면 암전
+- 수면음 페이드인 재생
+- 음성 입력 중단
+- 대화 세션 종료
+- 양 생성 후처리 시작
+
+저장:
+
+- 정상 엔딩 발화 또는 Auto-Fallback 발화를 `TranscriptTurn(role=sheep, step=6)`로 저장
+- `Session.status`를 `completed` 또는 `sleep_fallback`으로 업데이트
+
+## 6. 대화 상태 머신
+
+### 6.1 상태 목록
+
+- `idle`
+- `permission_check`
+- `session_started`
+- `step_1_opening`
+- `step_2_cognitive_dump`
+- `step_3_control_classification`
+- `step_4_small_achievement`
+- `step_5_emotional_lightening`
+- `step_5_5_sheep_seed`
+- `step_6_sleep_transition`
+- `generating_sheep_spec`
+- `generating_sheep_image`
+- `completed`
+- `sleep_fallback`
+- `error`
+
+### 6.2 분기 요약
+
+```text
+Step 1 -> Step 2
+Step 2 -> Step 3 if unresolved_problem_exists
+Step 2 -> Step 4 if no_problem_or_ambiguous
+Step 3 -> Step 4
+Step 4 -> Step 5
+Step 5 -> Step 5.5
+Step 5.5 -> Step 6
+Any waiting step -> Step 6 if no voice input for 15~20 seconds
+Step 6 -> sleep sound mode + sheep generation
+```
+
+## 7. 음성 모델 및 음성 레이어 전략
+
+## 7.1 왜 음성 레이어가 따로 필요한가
+
+대화 스크립트가 고정되어 있어도, 앱은 사용자에게 텍스트를 보여주는 것이 아니라 읽어줘야 한다.
+따라서 `대화 엔진`, `STT`, `TTS`, `수면음`은 분리되어야 한다.
+
+- 대화 엔진: 현재 Step과 다음 발화를 결정한다.
+- STT: 사용자 음성을 텍스트로 바꾼다.
+- TTS: 양의 발화 텍스트를 음성으로 읽는다.
+- 수면음: 대화 종료 후 재생되는 별도 오디오 레이어다.
+
+## 7.2 BASE44 MVP 음성 전략
+
+BASE44 MVP에서는 브라우저 기반 음성 기능을 1차로 사용한다.
+
+### 7.2.1 STT
+
+1차 무료 프로토타입:
+
+- Web Speech API의 `SpeechRecognition` 계열 사용
+- 브라우저 지원과 품질 차이가 있으므로 MVP 검증용으로만 둔다.
+- MDN 문서 기준 Web Speech API의 음성 인식은 기기 또는 브라우저가 제공하는 인식 서비스를 사용하며, 일반적으로 서버 기반 인식 엔진이 개입될 수 있다.
+
+품질 검증 버전:
+
+- 외부 STT API로 교체 가능하게 설계한다.
+- 후보: OpenAI transcription, Deepgram, Google Speech-to-Text 등
+- 단, API 키는 코드에 하드코딩하지 않고 Base44 secrets로 관리한다.
+
+### 7.2.2 TTS
+
+1차 무료 프로토타입:
+
+- Web Speech API의 `SpeechSynthesis` 사용
+- MDN 문서 기준 `SpeechSynthesis`는 기기에서 사용할 수 있는 음성 목록 조회, 말하기, 일시정지, 중단 등을 제어할 수 있다.
+- 브라우저와 OS에 따라 한국어 음성 품질이 다를 수 있다.
+
+권장 설정:
+
+```text
+language: ko-KR
+rate: 0.75~0.85
+pitch: 0.85~1.0
+volume: 0.6~0.8
+punctuation: 느낌표 사용 금지, 마침표 중심
+tone: 심야 라디오 DJ처럼 낮고 일정한 느낌
+```
+
+품질 검증 버전:
+
+- OpenAI `gpt-4o-mini-tts` 같은 클라우드 TTS로 교체 가능하게 설계한다.
+- OpenAI 공식 문서 기준 `gpt-4o-mini-tts`는 텍스트를 자연스러운 음성으로 변환하며, tone, speed, whispering 등 스타일 지시가 가능하다.
+- 단, 무료가 아니므로 BASE44 초기 검증에서는 필수로 두지 않는다.
+
+### 7.2.3 Android 전환 시 음성 전략
+
+Android 네이티브 MVP에서는 아래 순서를 우선한다.
+
+1. Android 기본 `TextToSpeech`
+2. Android 기본 TTS에서 한국어 음성 품질 확인
+3. 필요 시 Piper, sherpa-onnx, 기타 온디바이스 TTS 검토
+4. STT는 whisper.cpp 또는 sherpa-onnx 검토
+
+Android 공식 `TextToSpeech` API는 voice 조회, speech rate, pitch 설정을 지원한다.
+따라서 Android 전환 시에도 대화 엔진은 유지하고 음성 레이어만 교체한다.
+
+## 7.3 음성 인터페이스
+
+### 7.3.1 VoiceListener
+
+사용자 음성을 듣고 STT 텍스트를 반환한다.
+
+```text
+VoiceListener.startListening(options)
+VoiceListener.stopListening()
+VoiceListener.onPartialTranscript(text)
+VoiceListener.onFinalTranscript(text)
+VoiceListener.onSilenceTimeout()
+VoiceListener.onNoInputTimeout()
+VoiceListener.onError(error)
+```
+
+옵션:
+
+```text
+language: ko-KR
+silenceTimeoutMs: 3500~5000
+noInputTimeoutMs: 15000~20000
+interimResults: true
+continuous: false per step
+```
+
+### 7.3.2 VoiceSpeaker
+
+양의 발화를 음성으로 읽는다.
+
+```text
+VoiceSpeaker.speak(text, options)
+VoiceSpeaker.stop()
+VoiceSpeaker.pause()
+VoiceSpeaker.resume()
+VoiceSpeaker.onStart()
+VoiceSpeaker.onEnd()
+VoiceSpeaker.onError(error)
+```
+
+옵션:
+
+```text
+language: ko-KR
+rate: 0.8
+pitch: 0.9
+volume: 0.7
+voicePreference: calm Korean female or neutral soft voice
+```
+
+### 7.3.3 SleepSoundPlayer
+
+대화 종료 후 수면음을 재생한다.
+
+```text
+SleepSoundPlayer.fadeIn(soundId)
+SleepSoundPlayer.fadeOut()
+SleepSoundPlayer.stop()
+SleepSoundPlayer.setVolume(value)
+```
+
+이번 MVP에서는 수면음 모드를 “전환 대상”으로만 정의한다.
+수면음 선택, 믹싱, 타이머, 백그라운드 재생 정책은 후속 명세에서 다룬다.
+
+## 8. 데이터 모델
+
+## 8.1 Session
+
+세션 단위 대화와 양 생성을 묶는 최상위 엔티티다.
+
+```text
+id
+userId
+startedAt
+endedAt
+status
+currentStep
+sleepFallbackTriggered
+sheepId
+createdAt
+updatedAt
+```
+
+status 후보:
+
+```text
+active
+completed
+sleep_fallback
+failed
+```
+
+## 8.2 TranscriptTurn
+
+사용자와 양의 전체 대화 텍스트를 순서대로 저장한다.
+
+```text
+id
+sessionId
+role
+step
+text
+sttConfidence
+isAmbiguous
+createdAt
+```
+
+role 후보:
+
+```text
+user
+sheep
+system
+```
+
+저장 예시:
+
+```text
+role=sheep, step=1, text="오늘 하루는 어떠셨나요."
+role=user, step=1, text="오늘은 너무 피곤했어요."
+role=sheep, step=2, text="많이 지친 하루였군요. 오늘 하루도 고생 많으셨습니다..."
+```
+
+## 8.3 SheepSpec
+
+이미지를 생성하기 전 LLM이 만드는 중간 스펙이다.
+이미지 생성 API에 원문 transcript를 직접 넣지 않고, 먼저 이 구조로 변환한다.
+
+```text
+id
+sessionId
+emotionSummary
+dominantEmotions
+colorIntent
+textureIntent
+shapeIntent
+patternIntent
+symbolIntent
+sheepPersonality
+imagePrompt
+createdAt
+```
+
+## 8.4 Sheep
+
+최종 생성된 양 이미지와 표시 정보를 저장한다.
+
+```text
+id
+sessionId
+specId
+name
+imageUrl
+thumbnailUrl
+dominantEmotion
+displayColor
+createdAt
+```
+
+## 9. 양 생성 로직
+
+## 9.1 입력
+
+양 생성 함수는 세션의 전체 transcript를 입력으로 받는다.
+
+입력 구성:
+
+```text
+Session metadata
+TranscriptTurn[] ordered by createdAt
+User-selected color or texture from Step 5.5
+Reference style instruction
+```
+
+## 9.2 분석 기준
+
+양 생성은 아래 참고 문헌의 개념을 제품적으로 참고한다.
+
+- Goethe, J. W. (1810). Theory of Colours.
+- Kandinsky, W. (1912). Concerning the Spiritual in Art.
+- Plutchik, R. (1980). A Psychoevolutionary Theory of Emotions.
+- Heller, E. (2000). Psychology of Color.
+
+적용 방식:
+
+- Plutchik: 주요 감정 분류와 감정 조합 참고
+- Goethe/Heller: 색이 주는 정서적 인상 참고
+- Kandinsky: 색과 도형의 정서적 긴장감 참고
+- 사용자 선택: 최종 색감과 촉감에서 가장 우선한다.
+
+## 9.3 참고 이미지 스타일
+
+참고 이미지 경로:
+
+```text
+C:\Users\baikj\Desktop\KakaoTalk_20260509_235712470.png
+```
+
+참고 이미지의 방향:
+
+- 픽셀 아트 양
+- 감정별 색이 명확함
+- 감정별 도형 언어가 다름
+- 털의 패턴과 실루엣으로 감정 표현
+- 귀엽지만 감정 상태가 읽혀야 함
+
+참고 이미지 해석:
+
+- 기쁨: 노란색, 주황색, 둥근 형태, 부드러운 곡선
+- 분노: 빨간색, 삼각형, 날카로운 각
+- 슬픔: 파란색, 회색, 아래로 향한 선과 처진 형태
+- 평온: 녹색, 연한 녹색, 수평선, 직사각형
+- 공포: 검정색, 보라색, 불규칙한 지그재그
+- 신뢰: 파란색, 남색, 정사각형, 안정적인 격자
+
+## 9.4 SheepSpec 생성 프롬프트 방향
+
+LLM은 transcript를 읽고 아래를 생성한다.
+
+```json
+{
+  "emotionSummary": "오늘 대화에서 드러난 감정 요약",
+  "dominantEmotions": ["피로", "불안", "안도"],
+  "colorIntent": "사용자가 고른 색 또는 감정에 맞는 색",
+  "textureIntent": "포근함, 까슬함, 따뜻함 등 촉감",
+  "shapeIntent": "둥근 형태, 처진 형태, 뾰족한 형태 등",
+  "patternIntent": "점, 줄무늬, 격자, 지그재그 등",
+  "symbolIntent": "별, 작은 눈물, 달빛, 구름 등",
+  "sheepPersonality": "오늘 밤 사용자를 지켜주는 양의 성격",
+  "imagePrompt": "이미지 생성 API에 넣을 최종 프롬프트"
+}
+```
+
+주의:
+
+- 원문 transcript 전체를 이미지 생성 API에 직접 전달하지 않는다.
+- 민감한 개인 사건은 이미지 프롬프트에서 제거한다.
+- 감정과 색, 형태, 질감으로 추상화한다.
+- 사용자가 Step 5.5에서 고른 색깔이나 촉감은 최우선 반영한다.
+
+## 10. 이미지 생성 API 전략
+
+사용자는 이미지 생성 API 사용을 선호한다.
+
+이미지 생성 함수 흐름:
+
+```text
+generateSheepSpec(transcript) -> SheepSpec
+generateSheepImage(SheepSpec.imagePrompt) -> imageUrl
+save Sheep
+```
+
+이미지 프롬프트 기본 방향:
+
+```text
+Create a cute pixel art sheep character based on the provided emotional design spec.
+The sheep should look like a collectible nightly emotion sheep.
+Use clear emotional color, shape language, wool texture, and small symbolic details.
+Keep the style soft, sleep-friendly, and not scary.
+Do not include text in the image.
+Use a clean light background.
+```
+
+생성 이미지 품질 기준:
+
+- 픽셀 아트 양으로 보여야 한다.
+- 감정 색감이 분명해야 한다.
+- 털 모양과 패턴이 감정을 드러내야 한다.
+- 너무 무섭거나 자극적이면 안 된다.
+- 텍스트가 이미지 안에 들어가면 안 된다.
+- 매일 모을 수 있는 캐릭터처럼 보여야 한다.
+
+## 11. BASE44 구현 계획
+
+## 11.1 화면
+
+### 11.1.1 시작 화면
+
+필수 요소:
+
+- 수면 시작 버튼
+- 마이크 권한 안내
+- 대화 텍스트 저장 안내
+- 음성 파일은 저장하지 않는다는 안내
+- 생성된 양이 대화 원문 텍스트를 기반으로 만들어진다는 안내
+
+### 11.1.2 대화 화면
+
+필수 요소:
+
+- 어두운 배경
+- 현재 양이 말하는 상태 표시
+- 사용자가 말하는 상태 표시
+- 텍스트 입력은 기본적으로 숨기거나 보조 수단으로 둔다.
+- 화면은 과하게 밝지 않아야 한다.
+
+### 11.1.3 수면 모드 전환 화면
+
+필수 요소:
+
+- 화면 암전
+- 수면음 모드 진입 상태
+- 입력 차단
+- 세션 종료 처리
+
+### 11.1.4 양 생성 중 화면
+
+선택 요소:
+
+- “오늘의 양을 만들고 있어요.” 정도의 낮은 자극 문구
+- 너무 많은 설명은 피한다.
+
+### 11.1.5 오늘의 양 화면
+
+필수 요소:
+
+- 생성된 양 이미지
+- 짧은 감정 요약
+- 색/촉감/성격 설명
+- 원문 전체를 그대로 노출할지 여부는 별도 설정으로 둔다.
+
+## 11.2 Backend Functions
+
+Base44 backend functions는 외부 API 호출, 비밀 키 관리, 비즈니스 로직 처리에 사용한다.
+Base44 문서 기준 backend functions는 Deno 기반 TypeScript 함수이며, secrets를 환경 변수로 사용할 수 있다.
+
+필요 함수:
+
+```text
+startSleepSession
+saveTranscriptTurn
+completeSleepSession
+generateSheepSpec
+generateSheepImage
+```
+
+선택 함수:
+
+```text
+transcribeAudio
+synthesizeSpeech
+```
+
+단, 브라우저 Web Speech API를 1차로 쓰는 경우 `transcribeAudio`, `synthesizeSpeech`는 당장 필수는 아니다.
+
+## 11.3 Secrets
+
+API 키는 코드에 하드코딩하지 않는다.
+
+Base44에서는 secrets를 사용한다.
+
+예상 secret:
+
+```text
+OPENAI_API_KEY
+IMAGE_API_KEY
+STT_API_KEY
+TTS_API_KEY
+```
+
+실제 이름은 사용하는 provider에 맞춰 정한다.
+
+## 12. LLM 사용 지점
+
+LLM은 전체 대화를 자유롭게 만들지 않는다.
+
+사용 지점:
+
+1. Step별 짧은 공감문 생성
+2. Step 2의 문제 있음/없음/애매함 분기 판단
+3. Step 3 고민 요약
+4. Step 4 성취 여부 판단
+5. Step 5 웃음 포인트 요약
+6. Step 5.5 색/촉감 답변 정규화
+7. 세션 종료 후 SheepSpec 생성
+
+LLM 금지 지점:
+
+1. Step 순서 변경
+2. 새로운 질문 추가
+3. 사용자를 설득하거나 상담하기
+4. 장황한 분석
+5. 수면음 모드 이후 추가 대화
+
+## 13. 개인정보 및 동의 문구
+
+앱 시작 전 사용자에게 알려야 할 내용:
+
+```text
+이 앱은 수면 전 회고 대화를 위해 마이크를 사용합니다.
+음성 파일은 저장하지 않습니다.
+음성은 텍스트로 변환되며, 사용자와 양의 대화 텍스트 전체가 저장됩니다.
+저장된 대화 텍스트는 오늘의 감정 양을 생성하는 데 사용됩니다.
+```
+
+추가 설정 후보:
+
+- 대화 텍스트 삭제
+- 특정 세션 삭제
+- 생성된 양 삭제
+- 대화 원문 숨기기
+- 양만 남기고 transcript 삭제하기
+
+현재 MVP 기본값:
+
+- transcript 저장
+- audio 저장 안 함
+- sheep 생성 후 transcript 유지
+
+## 14. 테스트 계획
+
+## 14.1 대화 플로우 테스트
+
+테스트해야 할 시나리오:
+
+1. 정상 전체 진행
+2. Step 2에서 “없다”라고 답하고 Step 4로 넘어가기
+3. Step 2에서 “잘 모르겠어”라고 답하고 Step 4로 넘어가기
+4. Step 3에서 애매하게 답해도 캐묻지 않고 Step 4로 넘어가기
+5. Step 4에서 성취를 말했을 때 Step 5에서 긍정 지지하기
+6. Step 4에서 “없다”라고 했을 때 Step 5에서 괜찮다고 말하기
+7. Step 5.5에서 색깔이나 촉감을 말하면 Step 6 엔딩에 반영하기
+8. 중간 무응답 15~20초 시 “편안한 밤 되세요.” 후 수면 모드로 전환하기
+
+## 14.2 저장 테스트
+
+확인 항목:
+
+- Step 1 양 발화 저장
+- Step 1 사용자 발화 저장
+- 모든 Step의 양 발화 저장
+- 모든 Step의 사용자 발화 저장
+- transcript 순서 유지
+- 세션 종료 시간 저장
+- sleep_fallback 여부 저장
+- 원본 음성 파일이 저장되지 않는지 확인
+
+## 14.3 음성 테스트
+
+확인 항목:
+
+- TTS가 ko-KR 음성으로 재생되는지
+- TTS 속도가 0.75~0.85 범위로 느리게 설정되는지
+- 느낌표가 발화되지 않는지
+- STT가 3.5~5초 침묵을 기다리는지
+- 15~20초 무응답이 Auto-Fallback으로 이어지는지
+- TTS 재생 중 STT가 잘못 켜지지 않는지
+
+## 14.4 양 생성 테스트
+
+확인 항목:
+
+- transcript 전체가 SheepSpec 생성에 사용되는지
+- 민감한 사건이 이미지 프롬프트로 직접 들어가지 않는지
+- Step 5.5의 색깔/촉감 답변이 반영되는지
+- 감정 요약이 과도하게 단정적이지 않은지
+- 이미지가 픽셀 양 스타일을 유지하는지
+- 이미지 안에 글자가 들어가지 않는지
+
+## 15. 단계별 개발 순서
+
+### 15.1 1차: BASE44 노코드/로우코드 MVP
+
+목표:
+
+- 고정 대화 스크립트가 음성으로 진행되는지 확인
+- STT transcript 전체 저장
+- 브라우저 TTS로 대화 스크립트 읽기
+- 세션 종료 후 SheepSpec 생성
+- 이미지 생성 API로 양 이미지 생성
+
+구현:
+
+- 화면 4개
+- DB 3~4개 엔티티
+- Web Speech API 기반 STT/TTS
+- SheepSpec backend function
+- SheepImage backend function
+
+### 15.2 2차: 음성 품질 개선
+
+목표:
+
+- 브라우저 음성 품질이 부족하면 STT/TTS provider 교체
+- TTS 목소리의 수면 적합성 개선
+
+구현:
+
+- `VoiceListener` provider 교체
+- `VoiceSpeaker` provider 교체
+- cloud STT/TTS API 실험
+
+### 15.3 3차: Android 네이티브 이전
+
+목표:
+
+- 갤럭시 환경에서 화면 꺼짐, 마이크, TTS, 수면음 전환 검증
+
+구현:
+
+- Android Foreground Service
+- Android TextToSpeech
+- 온디바이스 STT 후보 실험
+- 화면 꺼짐 상태의 세션 유지
+
+## 16. 참고 문헌 및 기술 문서
+
+감정, 색채, 도형 참고:
+
+- Goethe, J. W. (1810). Theory of Colours.
+- Kandinsky, W. (1912). Concerning the Spiritual in Art.
+- Plutchik, R. (1980). A Psychoevolutionary Theory of Emotions.
+- Heller, E. (2000). Psychology of Color.
+
+기술 참고:
+
+- MDN SpeechSynthesis: https://developer.mozilla.org/docs/Web/API/SpeechSynthesis
+- MDN Web Speech API 사용 가이드: https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API/Using_the_Web_Speech_API
+- OpenAI Text to Speech: https://platform.openai.com/docs/guides/text-to-speech
+- Android TextToSpeech: https://developer.android.com/reference/android/speech/tts/TextToSpeech
+- Base44 Backend Functions: https://docs.base44.com/developers/backend/resources/functions
+- Base44 Secrets: https://docs.base44.com/developers/references/cli/commands/secrets-set
+
+## 17. 현재 결정된 사항
+
+- 대화 스크립트는 Step 1~6으로 고정한다.
+- 음성 파일은 저장하지 않는다.
+- STT 변환 텍스트 전체는 저장한다.
+- 사용자와 양의 발화 텍스트 모두 저장한다.
+- 저장된 원문 대화 전체는 양 생성에 사용한다.
+- 양 이미지는 이미지 생성 API로 만든다.
+- 색은 사용자가 고른 느낌을 우선 반영한다.
+- 참고 이미지의 픽셀 양 스타일을 기본 방향으로 한다.
+- BASE44 MVP에서는 브라우저 TTS/STT를 우선 사용하되, provider 교체가 가능해야 한다.
+
+## 18. 아직 후속 문서가 필요한 항목
+
+아래 항목은 본 문서에서 방향만 정하고, 별도 문서로 분리한다.
+
+- 수면음 모드 상세 기획
+- 생성된 양 컬렉션 UI
+- 양 이름/성격 생성 규칙
+- transcript 삭제 및 보존 정책
+- Android 화면 꺼짐 백그라운드 정책
+- 실제 이미지 생성 provider 선정
+- 실제 STT/TTS provider 선정

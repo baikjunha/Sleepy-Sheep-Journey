@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Sleeping Sheep API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: sessions
+    description: Sleep session operations
+  - name: transcripts
+    description: Transcript turn operations
+  - name: sheep
+    description: Sheep generation and retrieval
 paths:
   /healthz:
     get:
@@ -24,6 +30,258 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /sessions:
+    get:
+      operationId: listSessions
+      tags: [sessions]
+      summary: List all sessions
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Start a new sleep session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+      responses:
+        "201":
+          description: Created session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get a session with its transcripts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session with transcripts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionWithTranscripts"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateSession
+      tags: [sessions]
+      summary: Update a session (status, currentStep, etc.)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionUpdate"
+      responses:
+        "200":
+          description: Updated session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /sessions/{id}/complete:
+    post:
+      operationId: completeSession
+      tags: [sessions]
+      summary: Complete a session and trigger sheep generation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteSessionInput"
+      responses:
+        "200":
+          description: Completed session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /sessions/{id}/transcripts:
+    get:
+      operationId: listTranscripts
+      tags: [transcripts]
+      summary: List transcript turns for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of transcript turns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TranscriptTurn"
+    post:
+      operationId: saveTranscriptTurn
+      tags: [transcripts]
+      summary: Save a transcript turn for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranscriptTurnInput"
+      responses:
+        "201":
+          description: Saved transcript turn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptTurn"
+
+  /sessions/{id}/generate-empathy:
+    post:
+      operationId: generateEmpathy
+      tags: [sessions]
+      summary: Generate empathy text for a step using LLM
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmpathyInput"
+      responses:
+        "200":
+          description: Generated empathy text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmpathyResponse"
+
+  /sessions/{id}/generate-sheep:
+    post:
+      operationId: generateSheep
+      tags: [sheep]
+      summary: Generate SheepSpec and sheep image from session transcript
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Generated sheep
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sheep"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /sheep:
+    get:
+      operationId: listSheep
+      tags: [sheep]
+      summary: List all sheep (most recent first)
+      responses:
+        "200":
+          description: List of sheep
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sheep"
+
+  /sheep/{id}:
+    get:
+      operationId: getSheep
+      tags: [sheep]
+      summary: Get a single sheep with its spec
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Sheep with spec
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SheepWithSpec"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +292,310 @@ components:
       required:
         - status
 
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+        currentStep:
+          type: string
+        sleepFallbackTriggered:
+          type: boolean
+        sheepId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - startedAt
+        - endedAt
+        - status
+        - currentStep
+        - sleepFallbackTriggered
+        - sheepId
+        - createdAt
+        - updatedAt
+
+    SessionInput:
+      type: object
+      properties:
+        placeholder:
+          type: string
+
+    SessionUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+        currentStep:
+          type: string
+        sleepFallbackTriggered:
+          type: boolean
+        endedAt:
+          type: string
+          format: date-time
+
+    CompleteSessionInput:
+      type: object
+      properties:
+        status:
+          type: string
+        sleepFallbackTriggered:
+          type: boolean
+      required:
+        - status
+
+    SessionWithTranscripts:
+      type: object
+      properties:
+        id:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+        currentStep:
+          type: string
+        sleepFallbackTriggered:
+          type: boolean
+        sheepId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        transcripts:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptTurn"
+      required:
+        - id
+        - startedAt
+        - endedAt
+        - status
+        - currentStep
+        - sleepFallbackTriggered
+        - sheepId
+        - createdAt
+        - updatedAt
+        - transcripts
+
+    TranscriptTurn:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        role:
+          type: string
+        step:
+          type: string
+        text:
+          type: string
+        sttConfidence:
+          type: ["number", "null"]
+        isAmbiguous:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - role
+        - step
+        - text
+        - sttConfidence
+        - isAmbiguous
+        - createdAt
+
+    TranscriptTurnInput:
+      type: object
+      properties:
+        role:
+          type: string
+        step:
+          type: string
+        text:
+          type: string
+        sttConfidence:
+          type: ["number", "null"]
+        isAmbiguous:
+          type: boolean
+      required:
+        - role
+        - step
+        - text
+
+    EmpathyInput:
+      type: object
+      properties:
+        step:
+          type: string
+        userText:
+          type: string
+        contextTurns:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+              text:
+                type: string
+            required:
+              - role
+              - text
+      required:
+        - step
+        - userText
+
+    EmpathyResponse:
+      type: object
+      properties:
+        text:
+          type: string
+        hasProblem:
+          type: ["boolean", "null"]
+        hasAchievement:
+          type: ["boolean", "null"]
+        isAmbiguous:
+          type: ["boolean", "null"]
+        colorTexture:
+          type: ["string", "null"]
+      required:
+        - text
+
+    SheepSpec:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        emotionSummary:
+          type: string
+        dominantEmotions:
+          type: array
+          items:
+            type: string
+        colorIntent:
+          type: string
+        textureIntent:
+          type: string
+        shapeIntent:
+          type: string
+        patternIntent:
+          type: string
+        symbolIntent:
+          type: string
+        sheepPersonality:
+          type: string
+        imagePrompt:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - emotionSummary
+        - dominantEmotions
+        - colorIntent
+        - textureIntent
+        - shapeIntent
+        - patternIntent
+        - symbolIntent
+        - sheepPersonality
+        - imagePrompt
+        - createdAt
+
+    Sheep:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        specId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        imageUrl:
+          type: string
+        dominantEmotion:
+          type: string
+        displayColor:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - sessionId
+        - specId
+        - name
+        - imageUrl
+        - dominantEmotion
+        - displayColor
+        - createdAt
+
+    SheepWithSpec:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        specId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        imageUrl:
+          type: string
+        dominantEmotion:
+          type: string
+        displayColor:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        spec:
+          $ref: "#/components/schemas/SheepSpec"
+      required:
+        - id
+        - sessionId
+        - specId
+        - name
+        - imageUrl
+        - dominantEmotion
+        - displayColor
+        - createdAt
+        - spec
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

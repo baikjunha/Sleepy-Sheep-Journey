@@ -61,7 +61,7 @@ export default function Home() {
         {/* Sheep icon with glow */}
         <div className="relative">
           <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[3] animate-breathe" />
-          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-56 h-56 relative z-10 animate-float object-contain drop-shadow-2xl" />
+          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-80 h-80 relative z-10 animate-float object-contain drop-shadow-2xl" />
         </div>
 
         {/* Title block */}

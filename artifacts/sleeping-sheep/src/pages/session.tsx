@@ -338,7 +338,7 @@ export default function SessionScreen() {
           <img
             src="/sheep-mascot.png"
             alt="Sleeping Sheep"
-            className={`w-48 h-48 object-contain drop-shadow-2xl transition-all duration-1000 relative z-10 ${
+            className={`w-64 h-64 object-contain drop-shadow-2xl transition-all duration-1000 relative z-10 ${
               isSpeaking
                 ? "animate-float"
                 : isListening

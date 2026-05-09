@@ -293,57 +293,71 @@ export default function SessionScreen() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Top bar: step indicator + input toggle */}
       <div className="absolute top-0 left-0 right-0 px-6 pt-8 flex items-center justify-between z-10">
-        <div className="flex gap-1.5 items-center">
-          {Array.from({ length: totalSteps }).map((_, i) => (
-            <div
-              key={i}
-              data-testid={`step-indicator-${i}`}
-              className={`h-0.5 rounded-full transition-all duration-700 ${
-                i < currentStepNum ? "w-8 bg-primary/70" : "w-4 bg-muted/40"
-              }`}
-            />
-          ))}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5 items-center">
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <div
+                key={i}
+                data-testid={`step-indicator-${i}`}
+                className={`rounded-full transition-all duration-700 ${
+                  i < currentStepNum
+                    ? "w-6 h-1 bg-primary/50"
+                    : i === currentStepNum
+                      ? "w-4 h-1 bg-muted-foreground/20"
+                      : "w-2 h-1 bg-muted/30"
+                }`}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] text-muted-foreground/25 font-sans font-light tracking-wider">
+            {currentStepNum} / {totalSteps}
+          </span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           data-testid="toggle-text-input"
           onClick={() => setIsTextInput((v) => !v)}
-          className="text-muted-foreground hover:text-foreground opacity-50 hover:opacity-100"
+          className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors duration-300"
         >
           {isTextInput ? <Mic className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
         </Button>
       </div>
 
+      {/* Main content */}
       <div className="flex flex-col items-center max-w-md w-full mt-16">
-        <div className="relative mb-14 flex justify-center items-center">
+        {/* Sheep icon with state-dependent glow */}
+        <div className="relative mb-12 flex justify-center items-center">
           {isSpeaking && (
-            <div className="absolute inset-0 bg-primary/10 rounded-full blur-2xl animate-pulse scale-[2]" />
+            <div className="absolute inset-0 bg-primary/8 rounded-full blur-3xl animate-breathe scale-[2.5]" />
           )}
           {isListening && (
-            <div className="absolute inset-0 bg-emerald-500/10 rounded-full blur-2xl animate-pulse scale-[1.8]" />
+            <div className="absolute inset-0 bg-emerald-500/6 rounded-full blur-3xl animate-breathe scale-[2.2]" />
           )}
           <SheepIcon
-            className={`w-28 h-28 transition-all duration-1000 relative z-10 ${
+            className={`w-24 h-24 transition-all duration-1000 relative z-10 ${
               isSpeaking
-                ? "text-primary/80 drop-shadow-[0_0_20px_rgba(147,197,253,0.3)]"
+                ? "text-primary/70 animate-float"
                 : isListening
-                  ? "text-emerald-400/70"
+                  ? "text-emerald-400/50"
                   : isProcessing
-                    ? "text-muted-foreground/60 animate-pulse"
-                    : "text-muted-foreground/40"
+                    ? "text-muted-foreground/40 animate-pulse"
+                    : "text-muted-foreground/25"
             }`}
           />
         </div>
 
-        <div className="min-h-[140px] w-full text-center flex flex-col justify-center px-2">
-          <p className="text-xl font-serif leading-loose text-slate-200/90 transition-opacity duration-700">
+        {/* Sheep text */}
+        <div className="min-h-[140px] w-full text-center flex flex-col justify-center px-4">
+          <p className="text-lg font-serif leading-loose text-foreground/80 transition-opacity duration-700">
             {sheepText}
           </p>
         </div>
 
-        <div className="mt-10 w-full min-h-[100px] flex flex-col items-center justify-start">
+        {/* Input area / state display */}
+        <div className="mt-8 w-full min-h-[100px] flex flex-col items-center justify-start">
           {isTextInput ? (
             <div className="w-full flex items-center gap-2">
               <Input
@@ -352,7 +366,7 @@ export default function SessionScreen() {
                 onChange={(e) => setTextValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
                 placeholder="텍스트로 대답하기..."
-                className="bg-card/50 border-border/50 text-foreground placeholder:text-muted-foreground/50"
+                className="bg-white/[0.03] border-white/[0.06] text-foreground placeholder:text-muted-foreground/30 rounded-xl"
                 autoFocus
                 disabled={isProcessing || isSpeaking}
               />
@@ -361,6 +375,7 @@ export default function SessionScreen() {
                 size="icon"
                 onClick={handleTextSubmit}
                 disabled={!textValue.trim() || isProcessing || isSpeaking}
+                className="bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -369,31 +384,31 @@ export default function SessionScreen() {
             <div className="text-center w-full max-w-[280px]">
               {isListening ? (
                 <div className="flex flex-col items-center" data-testid="listening-state">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3 animate-pulse">
-                    <Mic className="w-4 h-4 text-emerald-400/80" />
+                  <div className="w-9 h-9 rounded-full bg-emerald-500/8 border border-emerald-500/10 flex items-center justify-center mb-3 animate-breathe">
+                    <Mic className="w-3.5 h-3.5 text-emerald-400/60" />
                   </div>
-                  <p className="text-slate-500 text-xs mb-2 tracking-widest uppercase font-light">
+                  <p className="text-muted-foreground/30 text-[10px] mb-2 tracking-[0.2em] uppercase font-light">
                     듣고 있어요
                   </p>
-                  <p className="text-slate-400 min-h-[40px] font-light text-sm leading-relaxed">
+                  <p className="text-foreground/50 min-h-[40px] font-light text-sm leading-relaxed">
                     {interimTranscript || transcript}
                   </p>
                 </div>
               ) : isSpeaking ? (
-                <div className="flex flex-col items-center opacity-60" data-testid="speaking-state">
-                  <p className="text-xs text-primary/80 tracking-widest uppercase">
-                    양이 이야기하고 있어요
+                <div className="flex flex-col items-center" data-testid="speaking-state">
+                  <p className="text-[10px] text-primary/40 tracking-[0.2em] uppercase font-light">
+                    양이 말하는 중
                   </p>
                 </div>
               ) : isProcessing ? (
-                <div className="flex flex-col items-center opacity-50" data-testid="processing-state">
-                  <div className="w-5 h-5 border border-primary/50 border-t-transparent rounded-full animate-spin mb-2" />
-                  <p className="text-xs text-muted-foreground">생각하고 있어요</p>
+                <div className="flex flex-col items-center" data-testid="processing-state">
+                  <div className="w-5 h-5 border border-primary/20 border-t-transparent rounded-full animate-spin mb-2" />
+                  <p className="text-[10px] text-muted-foreground/30 tracking-wider">생각하고 있어요</p>
                 </div>
               ) : (
-                <div className="flex flex-col items-center opacity-20" data-testid="idle-mic-state">
-                  <MicOff className="w-4 h-4 mb-2" />
-                  <p className="text-xs">마이크가 꺼져 있습니다</p>
+                <div className="flex flex-col items-center" data-testid="idle-mic-state">
+                  <MicOff className="w-3.5 h-3.5 mb-2 text-muted-foreground/15" />
+                  <p className="text-[10px] text-muted-foreground/15">마이크가 꺼져 있습니다</p>
                 </div>
               )}
             </div>

@@ -10,60 +10,76 @@ export default function History() {
   const { data: sheeps, isLoading } = useListSheep();
 
   return (
-    <div className="min-h-screen p-6 max-w-2xl mx-auto flex flex-col">
-      <div className="flex items-center mb-8 pt-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+    <div className="min-h-screen p-6 max-w-lg mx-auto flex flex-col">
+      {/* Header */}
+      <div className="flex items-center mb-2 pt-6">
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => setLocation("/")}
-          className="mr-2 text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground/40 hover:text-foreground"
         >
-          <ChevronLeft className="w-6 h-6" />
+          <ChevronLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-xl text-foreground font-medium">과거의 양들</h1>
+      </div>
+
+      <div className="mb-10 text-center">
+        <p className="text-xs tracking-[0.3em] text-muted-foreground/40 font-sans uppercase mb-3">
+          My Flock
+        </p>
+        <h1 className="text-xl font-serif text-foreground/90 mb-2">모아 둔 양들</h1>
+        {sheeps && sheeps.length > 0 && (
+          <p className="text-sm text-muted-foreground/40 font-light">
+            지금까지 {sheeps.length}마리를 재웠어요
+          </p>
+        )}
       </div>
 
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-            <p className="text-muted-foreground text-sm">양들을 불러오는 중...</p>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-8 h-8 rounded-full border border-primary/30 border-t-transparent animate-spin" />
+            <p className="text-muted-foreground/40 text-sm font-light">양들을 불러오는 중...</p>
           </div>
         </div>
       ) : sheeps?.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
-          <p>아직 만들어진 양이 없습니다.</p>
-          <p className="text-sm mt-2">오늘 밤 첫 번째 양을 만들어보세요.</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
+          <p className="text-muted-foreground/50 font-light">아직 만들어진 양이 없습니다.</p>
+          <p className="text-sm text-muted-foreground/30 font-light">오늘 밤 첫 번째 양을 만들어보세요.</p>
+          <Button
+            onClick={() => setLocation("/")}
+            variant="ghost"
+            className="mt-4 text-primary/50 hover:text-primary text-sm"
+          >
+            오늘의 양 만들기
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {sheeps?.map((sheep) => (
-            <div 
-              key={sheep.id} 
+            <div
+              key={sheep.id}
               onClick={() => setLocation(`/sheep/${sheep.id}`)}
-              className="bg-card border border-border rounded-2xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+              className="bg-card/30 border border-border/20 rounded-2xl overflow-hidden cursor-pointer hover:border-primary/20 hover:bg-card/50 transition-all duration-500 group"
             >
-              <div className="aspect-square bg-muted/30 relative">
+              <div className="aspect-square bg-background/40 relative overflow-hidden">
                 {sheep.imageUrl ? (
-                  <img src={sheep.imageUrl} alt={sheep.name} className="w-full h-full object-cover" />
+                  <img
+                    src={sheep.imageUrl}
+                    alt={sheep.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    이미지 없음
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-lg font-light tracking-widest">
+                    zzz
                   </div>
                 )}
               </div>
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground mb-1">
-                  {format(new Date(sheep.createdAt), "M월 d일", { locale: ko })}
+              <div className="p-3.5">
+                <p className="text-xs text-muted-foreground/35 mb-1 font-light">
+                  {format(new Date(sheep.createdAt), "M월 d일", { locale: ko })} · {sheep.dominantEmotion}
                 </p>
-                <p className="font-medium text-foreground">{sheep.name}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: sheep.displayColor || "#4B5563" }} 
-                  />
-                  <span className="text-xs text-muted-foreground truncate">{sheep.dominantEmotion}</span>
-                </div>
+                <p className="text-sm text-foreground/75 font-medium">{sheep.name}</p>
               </div>
             </div>
           ))}

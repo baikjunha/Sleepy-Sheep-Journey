@@ -5,6 +5,16 @@ import { SheepIcon } from "@/components/sheep-icon";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
+const HOME_STARS = Array.from({ length: 18 }).map((_, i) => ({
+  id: i,
+  size: Math.random() * 2 + 0.5,
+  top: Math.random() * 100,
+  left: Math.random() * 100,
+  opacity: Math.random() * 0.15 + 0.05,
+  duration: Math.random() * 5 + 4,
+  delay: Math.random() * 5,
+}));
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const createSession = useCreateSession();
@@ -21,7 +31,6 @@ export default function Home() {
         },
         onError: () => {
           setIsStarting(false);
-          // could show a toast here
         },
       }
     );
@@ -29,40 +38,70 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Subtle background elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-background to-background pointer-events-none" />
-      
-      <div className="z-10 flex flex-col items-center max-w-md w-full text-center space-y-10">
-        <div className="flex flex-col items-center space-y-4">
-          <SheepIcon className="w-24 h-24 text-primary opacity-90" />
-          <h1 className="text-3xl tracking-wider text-primary-foreground font-medium">Sleeping Sheep</h1>
-          <p className="text-muted-foreground text-sm">
-            당신의 감정에 조용히 귀 기울이는 밤.
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/8 via-background to-background pointer-events-none" />
+
+      {/* Stars */}
+      {HOME_STARS.map((star) => (
+        <div
+          key={star.id}
+          className="star"
+          style={{
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            top: `${star.top}%`,
+            left: `${star.left}%`,
+            opacity: star.opacity,
+            animationDuration: `${star.duration}s`,
+            animationDelay: `${star.delay}s`,
+          }}
+        />
+      ))}
+
+      <div className="z-10 flex flex-col items-center max-w-sm w-full text-center space-y-12">
+        {/* Sheep icon with glow */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[3] animate-breathe" />
+          <SheepIcon className="w-20 h-20 text-primary/50 relative z-10 animate-float" />
+        </div>
+
+        {/* Title block */}
+        <div className="space-y-4">
+          <h1 className="text-xs tracking-[0.35em] text-muted-foreground/50 font-sans font-light uppercase">
+            Sleeping Sheep
+          </h1>
+          <p className="text-2xl font-serif text-foreground/90 leading-relaxed">
+            오늘 하루, 양에게 들려주세요
+          </p>
+          <p className="text-sm text-muted-foreground/60 font-light leading-relaxed">
+            눈을 감기 전, 작은 양이 당신의 이야기를 기다리고 있어요.
           </p>
         </div>
 
-        <div className="bg-card/50 p-6 rounded-2xl border border-border/50 text-sm text-left leading-relaxed text-muted-foreground">
-          이 앱은 수면 전 회고 대화를 위해 마이크를 사용합니다. 음성 파일은 저장하지 않습니다. 음성은 텍스트로 변환되며, 사용자와 양의 대화 텍스트 전체가 저장됩니다. 저장된 대화 텍스트는 오늘의 감정 양을 생성하는 데 사용됩니다.
-        </div>
-
-        <div className="flex flex-col space-y-4 w-full pt-4">
-          <Button 
-            onClick={handleStart} 
+        {/* Actions */}
+        <div className="flex flex-col space-y-3 w-full pt-2">
+          <Button
+            onClick={handleStart}
             disabled={isStarting}
-            className="w-full py-6 text-lg rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300"
+            className="w-full py-6 text-base rounded-2xl bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20 transition-all duration-500"
           >
-            {isStarting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+            {isStarting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {isStarting ? "준비하는 중..." : "수면 시작"}
           </Button>
-          
-          <Button 
-            variant="ghost" 
+
+          <Button
+            variant="ghost"
             onClick={() => setLocation("/history")}
-            className="w-full text-muted-foreground hover:text-foreground"
+            className="w-full text-muted-foreground/40 hover:text-muted-foreground/60 text-sm font-light"
           >
-            과거 양 목록 보기
+            지난 양들
           </Button>
         </div>
+
+        {/* Privacy note */}
+        <p className="text-xs text-muted-foreground/30 leading-relaxed font-light px-4">
+          음성 파일은 저장되지 않아요. 대화 텍스트만 양 생성을 위해 보관됩니다.
+        </p>
       </div>
     </div>
   );

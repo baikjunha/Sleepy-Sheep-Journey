@@ -51,7 +51,6 @@ export default function SleepScreen() {
         // Ignore network errors — polling will detect completion
       }
 
-      // Poll for completion
       function cleanup() {
         if (pollTimer.current) clearInterval(pollTimer.current);
         if (timeoutTimer.current) clearTimeout(timeoutTimer.current);
@@ -82,7 +81,6 @@ export default function SleepScreen() {
         setErrorMsg("양을 만드는 데 너무 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요.");
       }, POLL_TIMEOUT_MS);
 
-      // Check immediately as well
       void checkDone();
     }
 
@@ -116,25 +114,28 @@ export default function SleepScreen() {
       ))}
 
       <div className="z-10 flex flex-col items-center space-y-8">
-        <SheepIcon
-          className="w-16 h-16"
-          style={{ color: "rgba(148, 163, 184, 0.3)" }}
-        />
+        <div className="relative">
+          <div className="absolute inset-0 bg-primary/5 rounded-full blur-2xl scale-[2.5] animate-breathe" />
+          <SheepIcon
+            className="w-14 h-14 relative z-10 animate-float"
+            style={{ color: "rgba(148, 163, 184, 0.25)" }}
+          />
+        </div>
 
         {errorMsg ? (
-          <div className="text-center px-8">
-            <p className="text-slate-500 font-light text-sm leading-relaxed">{errorMsg}</p>
+          <div className="text-center px-8 space-y-5">
+            <p className="text-muted-foreground/40 font-light text-sm leading-relaxed">{errorMsg}</p>
             <button
               onClick={() => setLocation("/")}
-              className="mt-6 text-slate-600 text-xs underline"
+              className="text-muted-foreground/25 text-xs underline underline-offset-4 hover:text-muted-foreground/40 transition-colors"
             >
               홈으로 돌아가기
             </button>
           </div>
         ) : (
           <p
-            className="font-light tracking-widest text-sm"
-            style={{ color: "rgba(100, 116, 139, 0.7)" }}
+            className="font-light tracking-[0.2em] text-sm"
+            style={{ color: "rgba(100, 116, 139, 0.5)" }}
           >
             오늘의 양을 만들고 있어요{dots}
           </p>

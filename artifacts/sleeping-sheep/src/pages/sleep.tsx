@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
-import { SheepIcon } from "@/components/sheep-icon";
 
 const NUM_STARS = 60;
 
@@ -116,10 +115,7 @@ export default function SleepScreen() {
       <div className="z-10 flex flex-col items-center space-y-8">
         <div className="relative">
           <div className="absolute inset-0 bg-primary/5 rounded-full blur-2xl scale-[2.5] animate-breathe" />
-          <SheepIcon
-            className="w-14 h-14 relative z-10 animate-float"
-            style={{ color: "rgba(148, 163, 184, 0.25)" }}
-          />
+          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-28 h-28 relative z-10 animate-float object-contain drop-shadow-2xl opacity-60" />
         </div>
 
         {errorMsg ? (

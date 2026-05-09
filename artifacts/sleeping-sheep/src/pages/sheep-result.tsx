@@ -75,34 +75,30 @@ export default function SheepResultScreen() {
         </div>
       )}
 
-      {/* Spec cards */}
-      <div className="w-full space-y-3 mb-10">
+      {/* Spec rows */}
+      <div className="w-full mb-10">
         {sheep.spec?.emotionSummary && (
-          <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.04]">
-            <span className="text-[11px] text-muted-foreground/30 tracking-widest uppercase block mb-1.5">감정</span>
-            <p className="text-sm text-foreground/65 font-light leading-relaxed">{sheep.spec.emotionSummary}</p>
+          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
+            <span className="text-sm text-muted-foreground/40 font-light shrink-0">감정</span>
+            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.emotionSummary}</p>
           </div>
         )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {sheep.spec?.colorIntent && (
-            <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.04]">
-              <span className="text-[11px] text-muted-foreground/30 tracking-widest uppercase block mb-1.5">색감</span>
-              <p className="text-sm text-foreground/65 font-light">{sheep.spec.colorIntent}</p>
-            </div>
-          )}
-          {sheep.spec?.textureIntent && (
-            <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.04]">
-              <span className="text-[11px] text-muted-foreground/30 tracking-widest uppercase block mb-1.5">촉감</span>
-              <p className="text-sm text-foreground/65 font-light">{sheep.spec.textureIntent}</p>
-            </div>
-          )}
-        </div>
-
+        {sheep.spec?.colorIntent && (
+          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
+            <span className="text-sm text-muted-foreground/40 font-light shrink-0">색감</span>
+            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.colorIntent}</p>
+          </div>
+        )}
+        {sheep.spec?.textureIntent && (
+          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
+            <span className="text-sm text-muted-foreground/40 font-light shrink-0">촉감</span>
+            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.textureIntent}</p>
+          </div>
+        )}
         {sheep.spec?.sheepPersonality && (
-          <div className="bg-white/[0.03] rounded-2xl p-4 border border-white/[0.04]">
-            <span className="text-[11px] text-muted-foreground/30 tracking-widest uppercase block mb-1.5">성격</span>
-            <p className="text-sm text-foreground/65 font-light leading-relaxed">{sheep.spec.sheepPersonality}</p>
+          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
+            <span className="text-sm text-muted-foreground/40 font-light shrink-0">성격</span>
+            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.sheepPersonality}</p>
           </div>
         )}
       </div>

@@ -7,7 +7,6 @@ import {
   useCompleteSession,
 } from "@workspace/api-client-react";
 import { useSpeech } from "@/hooks/use-speech";
-import { SheepIcon } from "@/components/sheep-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, MicOff, Send, MessageSquare } from "lucide-react";
@@ -336,15 +335,17 @@ export default function SessionScreen() {
           {isListening && (
             <div className="absolute inset-0 bg-emerald-500/6 rounded-full blur-3xl animate-breathe scale-[2.2]" />
           )}
-          <SheepIcon
-            className={`w-24 h-24 transition-all duration-1000 relative z-10 ${
+          <img
+            src="/sheep-mascot.png"
+            alt="Sleeping Sheep"
+            className={`w-32 h-32 object-contain drop-shadow-2xl transition-all duration-1000 relative z-10 ${
               isSpeaking
-                ? "text-primary/70 animate-float"
+                ? "animate-float"
                 : isListening
-                  ? "text-emerald-400/50"
+                  ? "opacity-80"
                   : isProcessing
-                    ? "text-muted-foreground/40 animate-pulse"
-                    : "text-muted-foreground/25"
+                    ? "animate-pulse opacity-60"
+                    : "opacity-40"
             }`}
           />
         </div>

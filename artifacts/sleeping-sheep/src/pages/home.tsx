@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useCreateSession } from "@workspace/api-client-react";
-import { SheepIcon } from "@/components/sheep-icon";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -62,7 +61,7 @@ export default function Home() {
         {/* Sheep icon with glow */}
         <div className="relative">
           <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[3] animate-breathe" />
-          <SheepIcon className="w-20 h-20 text-primary/50 relative z-10 animate-float" />
+          <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-36 h-36 relative z-10 animate-float object-contain drop-shadow-2xl" />
         </div>
 
         {/* Title block */}

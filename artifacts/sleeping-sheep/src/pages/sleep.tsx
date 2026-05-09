@@ -115,7 +115,7 @@ export default function SleepScreen() {
       {/* Sheep — large decorative */}
       <div className="relative pointer-events-none z-0 mb-[-40px]">
         <div className="absolute inset-0 bg-primary/5 rounded-full blur-3xl scale-[2] animate-breathe" />
-        <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[60vw] max-w-[360px] h-auto relative animate-float object-contain drop-shadow-2xl opacity-60" />
+        <img src="/sheep-mascot.png" alt="Sleeping Sheep" className="w-[60vw] max-w-[360px] max-h-[40vh] h-auto relative animate-float object-contain drop-shadow-2xl opacity-60" />
       </div>
 
       <div className="z-10 flex flex-col items-center space-y-8">

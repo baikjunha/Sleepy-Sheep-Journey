@@ -1,0 +1,1 @@
+- [Sleeping Sheep background jobs](sleeping-sheep-background-jobs.md) — sheep image gen/regen are in-process fire-and-forget (~55s each); don't restart api-server mid-run, don't casually trigger the POST endpoints (real cost).

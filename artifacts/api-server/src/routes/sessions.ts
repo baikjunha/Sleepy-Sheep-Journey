@@ -320,6 +320,70 @@ JSON으로 응답하세요: { "text": "공감 문장." }`;
   }
 });
 
+// 감정 → 색채·형태 매핑 심리학 프레임워크.
+// gpt-5-mini가 대화의 감정을 구체적인 시각 속성(명도/채도/색상, 윤곽선, 방향성, 복잡도)으로 번역하도록 안내한다.
+const SHEEP_SPEC_SYSTEM_PROMPT = `당신은 사용자의 수면 전 회고 대화를 바탕으로 감정 양(Sheep) 생성 스펙을 만드는 전문가입니다.
+
+당신은 아래 "감정-시각 매핑 심리학 프레임워크"를 반드시 적용하여, 대화에서 읽어낸 감정을 구체적인 색·형태 선택으로 번역해야 합니다.
+
+[1. 색채의 3속성으로 감정 차원 조절]
+- 명도(Brightness) = 긍정/부정(Pleasure): 명도가 높을수록(밝은 색) 기쁨·행복·편안함 등 긍정 감정. 명도가 낮을수록(어두운 색) 우울·슬픔·두려움 등 부정 감정.
+- 채도(Saturation) = 감정의 강도/흥분(Arousal): 채도가 높을수록(선명한 색) 흥분·분노·열정 등 강렬한 상태. 채도가 낮을수록(탁하고 흐린 색) 차분함·무기력·안정 등 낮은 에너지.
+- 색상(Hue) 기본 매핑: 빨강=높은 각성(분노 또는 강렬한 열정/사랑), 노랑=높은 기쁨·희망·활기, 파랑=편안·차분·신뢰(단 명도가 극도로 낮으면 깊은 슬픔·고립), 초록=휴식·평화·안도, 무채색(검정/회색)=우울·슬픔·불안·공포·통제감 상실.
+  예) 격렬한 분노=채도·명도 모두 높은 강렬한 빨강. 식어가는 실망=채도를 낮춰 회색에 가깝게 탁해지는 붉은색.
+
+[2. 형태(윤곽선·방향성·복잡도)로 감정 표현]
+- 윤곽선: 둥근 형태(원·타원·부드러운 곡선)=심리적 안정·편안함·기쁨·친근함. 뾰족한 형태(삼각형·별·지그재그)=높은 각성·긴장·위협·분노.
+- 방향성/대칭: 수평·대칭(정사각형·직사각형·수평선)=평온·무거운 슬픔·이성적 통제·정적인 상태. 사선·비대칭(역삼각형·기울어진 마름모·사선)=불안·혼란·역동성·통제 불능의 흥분.
+- 복잡도/밀도: 단순하고 여백이 뚫린 형태=차분함·홀가분함·공허함·외로움. 복잡하게 얽히거나 꽉 찬 형태=스트레스·억압·복잡한 심경·폭발적 감정의 혼재.
+
+규칙:
+- 위 프레임워크에 따라 dominantEmotions를 먼저 정한 뒤, 그 감정을 명도·채도·색상·윤곽선·방향성·복잡도로 번역하세요.
+- colorIntent에는 색상 이름뿐 아니라 명도(밝음/어두움)와 채도(선명함/탁함) 수준을 함께 명시하세요.
+- shapeIntent에는 윤곽선(둥글다/뾰족하다), 방향성(수평·대칭/사선·비대칭), 복잡도(단순/복잡)를 명시하세요.
+- imagePrompt(영어)에는 위에서 정한 구체적 명도/채도/색상, 양의 실루엣과 포즈의 둥글거나 각진 정도, 구도의 대칭/기울기, 배경의 단순함/복잡함, 상징 도형을 모두 반영하세요.
+- 민감한 개인 사건을 이미지 프롬프트에 직접 넣지 말고 감정·색·형태·질감으로 추상화하세요.
+- 이미지는 픽셀 아트 양 스타일이며 텍스트가 없어야 합니다.
+- 반드시 JSON만 출력하고, 마크다운 코드블록 없이 순수 JSON으로만 응답하세요.`;
+
+const IMAGE_STYLE_SUFFIX = `Style: cute pixel art sheep character. Apply emotion-to-visual psychology precisely: brightness encodes pleasure (brighter = more positive), saturation encodes arousal (more vivid = more intense), and hue follows the emotional base described above. Shape language matters: rounded silhouettes for calm/comfort, sharper angular accents for tension; symmetric horizontal composition for stable/heavy-sad moods, tilted diagonal composition for restless/anxious moods; sparse open background for calm/lonely feelings, denser busy background for stress/conflict. Clear wool texture, small symbolic details, sheep centered and clearly visible, dark calming night background. No text in the image.`;
+
+interface SheepSpecData {
+  emotionSummary?: string;
+  dominantEmotions?: string[];
+  colorIntent?: string;
+  textureIntent?: string;
+  shapeIntent?: string;
+  patternIntent?: string;
+  symbolIntent?: string;
+  sheepPersonality?: string;
+  imagePrompt?: string;
+}
+
+async function buildSheepSpec(sourceText: string): Promise<SheepSpecData> {
+  const specResponse = await openai.chat.completions.create({
+    model: "gpt-5-mini",
+    max_completion_tokens: 8192,
+    messages: [
+      { role: "system", content: SHEEP_SPEC_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: `다음은 오늘 밤 사용자와 양의 대화(또는 감정 기록)입니다:\n\n${sourceText}\n\n위 내용을 감정-시각 매핑 프레임워크로 분석하여 다음 JSON 형식으로만 응답해주세요 (마크다운 없이 순수 JSON):
+{"emotionSummary":"감정 요약","dominantEmotions":["감정1","감정2"],"colorIntent":"명도/채도/색상을 포함한 색감","textureIntent":"촉감","shapeIntent":"윤곽선/방향성/복잡도를 포함한 형태","patternIntent":"패턴","symbolIntent":"상징","sheepPersonality":"성격","imagePrompt":"pixel art sheep prompt in english that encodes brightness, saturation, hue, contour, symmetry and complexity"}`,
+      },
+    ],
+  });
+
+  const specContent = specResponse.choices[0]?.message?.content || "{}";
+  return parseJsonSafe(specContent) as SheepSpecData;
+}
+
+async function renderSheepImage(imagePrompt: string): Promise<string> {
+  const fullPrompt = `${imagePrompt}\n\n${IMAGE_STYLE_SUFFIX}`;
+  const imageBuffer = await generateImageBuffer(fullPrompt, "1024x1024");
+  return `data:image/png;base64,${imageBuffer.toString("base64")}`;
+}
+
 async function runGenerateSheep(sessionId: number, log: import("pino").Logger): Promise<void> {
   try {
     const [session] = await db
@@ -341,40 +405,7 @@ async function runGenerateSheep(sessionId: number, log: import("pino").Logger): 
     const transcriptText = transcripts.map((t) => `[${t.role}][${t.step}]: ${t.text}`).join("\n");
 
     // Step 1: Generate SheepSpec
-    const specResponse = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 8192,
-      messages: [
-        {
-          role: "system",
-          content: `당신은 사용자의 수면 전 회고 대화를 바탕으로 감정 양(Sheep) 생성 스펙을 만드는 전문가입니다.
-규칙:
-- 민감한 개인 사건을 이미지 프롬프트에 직접 넣지 마세요.
-- 감정과 색, 형태, 질감으로 추상화하세요.
-- 이미지는 픽셀 아트 양 스타일이어야 합니다.
-- 이미지에 텍스트가 없어야 합니다.
-- 반드시 JSON만 출력하고, 마크다운 코드블록 없이 순수 JSON으로만 응답하세요.`,
-        },
-        {
-          role: "user",
-          content: `다음은 오늘 밤 사용자와 양의 대화 전문입니다:\n\n${transcriptText}\n\n위 대화를 분석하여 다음 JSON 형식으로만 응답해주세요 (마크다운 없이 순수 JSON):
-{"emotionSummary":"감정 요약","dominantEmotions":["감정1","감정2"],"colorIntent":"색감","textureIntent":"촉감","shapeIntent":"형태","patternIntent":"패턴","symbolIntent":"상징","sheepPersonality":"성격","imagePrompt":"pixel art sheep prompt in english"}`,
-        },
-      ],
-    });
-
-    const specContent = specResponse.choices[0]?.message?.content || "{}";
-    const specData = parseJsonSafe(specContent) as {
-      emotionSummary?: string;
-      dominantEmotions?: string[];
-      colorIntent?: string;
-      textureIntent?: string;
-      shapeIntent?: string;
-      patternIntent?: string;
-      symbolIntent?: string;
-      sheepPersonality?: string;
-      imagePrompt?: string;
-    };
+    const specData = await buildSheepSpec(transcriptText);
 
     const [spec] = await db
       .insert(sheepSpecsTable)
@@ -393,12 +424,7 @@ async function runGenerateSheep(sessionId: number, log: import("pino").Logger): 
       .returning();
 
     // Step 2: Generate image
-    const fullPrompt = `${spec.imagePrompt}
-
-Style: cute pixel art sheep character. Soft emotional colors, clear wool texture, small symbolic details. Sleep-friendly, calming, dark night background. Sheep centered and clearly visible. No text in the image.`;
-
-    const imageBuffer = await generateImageBuffer(fullPrompt, "1024x1024");
-    const imageBase64 = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+    const imageBase64 = await renderSheepImage(spec.imagePrompt);
 
     // Step 3: Save Sheep
     const [sheep] = await db
@@ -452,6 +478,121 @@ router.post("/sessions/:id/generate-sheep", async (req: Request, res: Response):
   res.status(202).json({ status: "generating" });
 
   void runGenerateSheep(sessionId, req.log);
+});
+
+// 단일 실행 보장: 한 번에 하나의 일괄 재생성 작업만 돌도록 막는다.
+let isRegeneratingAll = false;
+
+// 기존에 저장된 모든 양을 새 감정-시각 프레임워크로 다시 생성한다.
+async function runRegenerateAllSheep(log: import("pino").Logger): Promise<void> {
+  try {
+    const allSheep = await db.select().from(sheepTable).orderBy(asc(sheepTable.id));
+    log.info({ count: allSheep.length }, "Starting sheep regeneration for all sheep");
+
+    for (const sheep of allSheep) {
+      try {
+        // 대화 기록이 있으면 그 전문으로, 없으면 기존 스펙의 감정 정보로 재해석한다.
+        const transcripts = await db
+          .select()
+          .from(transcriptTurnsTable)
+          .where(eq(transcriptTurnsTable.sessionId, sheep.sessionId))
+          .orderBy(asc(transcriptTurnsTable.createdAt));
+
+        let sourceText = transcripts.map((t) => `[${t.role}][${t.step}]: ${t.text}`).join("\n");
+
+        let existingSpec: typeof sheepSpecsTable.$inferSelect | null = null;
+        if (sheep.specId) {
+          const [s] = await db
+            .select()
+            .from(sheepSpecsTable)
+            .where(eq(sheepSpecsTable.id, sheep.specId));
+          existingSpec = s ?? null;
+        }
+
+        if (!sourceText.trim() && existingSpec) {
+          sourceText = `감정 요약: ${existingSpec.emotionSummary}
+주요 감정: ${(existingSpec.dominantEmotions ?? []).join(", ")}
+색감: ${existingSpec.colorIntent}
+촉감: ${existingSpec.textureIntent}
+형태: ${existingSpec.shapeIntent}
+패턴: ${existingSpec.patternIntent}
+상징: ${existingSpec.symbolIntent}
+성격: ${existingSpec.sheepPersonality}`;
+        }
+
+        if (!sourceText.trim()) {
+          log.warn({ sheepId: sheep.id }, "No source text for sheep, skipping regeneration");
+          continue;
+        }
+
+        const specData = await buildSheepSpec(sourceText);
+
+        const newImagePrompt =
+          specData.imagePrompt ??
+          existingSpec?.imagePrompt ??
+          "A cute pixel art sheep with warm cream colored wool, sleeping peacefully.";
+
+        // 스펙 갱신 (기존 스펙이 있으면 업데이트, 없으면 새로 생성)
+        let specId = sheep.specId;
+        const specValues = {
+          emotionSummary: specData.emotionSummary ?? existingSpec?.emotionSummary ?? "오늘 하루의 감정이 담긴 양.",
+          dominantEmotions: specData.dominantEmotions ?? existingSpec?.dominantEmotions ?? ["평온"],
+          colorIntent: specData.colorIntent ?? existingSpec?.colorIntent ?? "따뜻한 크림색",
+          textureIntent: specData.textureIntent ?? existingSpec?.textureIntent ?? "부드러운 양털",
+          shapeIntent: specData.shapeIntent ?? existingSpec?.shapeIntent ?? "둥글고 포근한 형태",
+          patternIntent: specData.patternIntent ?? existingSpec?.patternIntent ?? "잔잔한 물결 무늬",
+          symbolIntent: specData.symbolIntent ?? existingSpec?.symbolIntent ?? "작은 달과 별",
+          sheepPersonality: specData.sheepPersonality ?? existingSpec?.sheepPersonality ?? "조용하고 따뜻하게 사용자를 지켜주는 양",
+          imagePrompt: newImagePrompt,
+        };
+
+        if (specId) {
+          await db.update(sheepSpecsTable).set(specValues).where(eq(sheepSpecsTable.id, specId));
+        } else {
+          const [newSpec] = await db
+            .insert(sheepSpecsTable)
+            .values({ sessionId: sheep.sessionId, ...specValues })
+            .returning();
+          specId = newSpec.id;
+        }
+
+        // 새 프레임워크 기준으로 이미지 재생성
+        const imageBase64 = await renderSheepImage(newImagePrompt);
+
+        await db
+          .update(sheepTable)
+          .set({
+            specId,
+            imageUrl: imageBase64,
+            dominantEmotion: specValues.dominantEmotions[0] ?? "평온",
+            displayColor: specValues.colorIntent,
+          })
+          .where(eq(sheepTable.id, sheep.id));
+
+        log.info({ sheepId: sheep.id }, "Sheep regenerated");
+      } catch (err) {
+        log.error({ err, sheepId: sheep.id }, "Failed to regenerate one sheep");
+      }
+    }
+
+    log.info("Sheep regeneration complete for all sheep");
+  } catch (err) {
+    log.error({ err }, "Failed to regenerate all sheep");
+  } finally {
+    isRegeneratingAll = false;
+  }
+}
+
+// POST /api/sheep/regenerate-all — 모아둔 모든 양을 새 감정-시각 프레임워크로 다시 생성
+router.post("/sheep/regenerate-all", async (req: Request, res: Response): Promise<void> => {
+  if (isRegeneratingAll) {
+    res.status(409).json({ status: "already_running" });
+    return;
+  }
+  isRegeneratingAll = true;
+  // Fire and forget — respond immediately, regenerate in background
+  res.status(202).json({ status: "regenerating" });
+  void runRegenerateAllSheep(req.log);
 });
 
 // GET /api/sheep

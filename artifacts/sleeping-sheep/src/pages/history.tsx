@@ -67,7 +67,7 @@ export default function History() {
                   <img
                     src={sheep.imageUrl}
                     alt={sheep.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover animate-sheep"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-lg font-light tracking-widest">

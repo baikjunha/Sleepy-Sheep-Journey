@@ -1,11 +1,16 @@
 import { useRoute, useLocation } from "wouter";
-import { useGetSheep, getGetSheepQueryKey } from "@workspace/api-client-react";
+import {
+  useGetSheep,
+  getGetSheepQueryKey,
+  useListTranscripts,
+  getListTranscriptsQueryKey,
+} from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 
 export default function SheepResultScreen() {
-  const [match, params] = useRoute("/sheep/:id");
+  const [, params] = useRoute("/sheep/:id");
   const [, setLocation] = useLocation();
   const id = params?.id ? parseInt(params.id) : 0;
 
@@ -13,6 +18,14 @@ export default function SheepResultScreen() {
     query: {
       enabled: !!id,
       queryKey: getGetSheepQueryKey(id),
+    },
+  });
+
+  const sessionId = sheep?.sessionId ?? 0;
+  const { data: transcripts } = useListTranscripts(sessionId, {
+    query: {
+      enabled: !!sessionId,
+      queryKey: getListTranscriptsQueryKey(sessionId),
     },
   });
 
@@ -35,6 +48,8 @@ export default function SheepResultScreen() {
     );
   }
 
+  const conversation = (transcripts ?? []).filter((t) => t.text?.trim().length > 0);
+
   return (
     <div className="min-h-screen p-6 max-w-md mx-auto flex flex-col items-center bg-[#050510] text-foreground pb-12">
       {/* Header */}
@@ -50,7 +65,7 @@ export default function SheepResultScreen() {
       {/* Sheep image */}
       <div className="w-full max-w-xs aspect-square rounded-3xl overflow-hidden mb-8 border border-white/5 shadow-2xl">
         {sheep.imageUrl ? (
-          <img src={sheep.imageUrl} alt={sheep.name} className="w-full h-full object-cover" />
+          <img src={sheep.imageUrl} alt={sheep.name} className="w-full h-full object-cover animate-sheep" />
         ) : (
           <div className="w-full h-full bg-card/20 flex items-center justify-center text-muted-foreground/20">
             이미지가 없습니다
@@ -83,18 +98,6 @@ export default function SheepResultScreen() {
             <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.emotionSummary}</p>
           </div>
         )}
-        {sheep.spec?.colorIntent && (
-          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
-            <span className="text-sm text-muted-foreground/40 font-light shrink-0">색감</span>
-            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.colorIntent}</p>
-          </div>
-        )}
-        {sheep.spec?.textureIntent && (
-          <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
-            <span className="text-sm text-muted-foreground/40 font-light shrink-0">촉감</span>
-            <p className="text-sm text-foreground/70 font-light text-right ml-6">{sheep.spec.textureIntent}</p>
-          </div>
-        )}
         {sheep.spec?.sheepPersonality && (
           <div className="flex items-baseline justify-between py-4 border-b border-white/[0.06]">
             <span className="text-sm text-muted-foreground/40 font-light shrink-0">성격</span>
@@ -102,6 +105,38 @@ export default function SheepResultScreen() {
           </div>
         )}
       </div>
+
+      {/* Conversation with the sheep */}
+      {conversation.length > 0 && (
+        <div className="w-full mb-10">
+          <p className="text-xs tracking-[0.3em] text-muted-foreground/35 font-sans uppercase mb-5 text-center">
+            오늘 밤 나눈 이야기
+          </p>
+          <div className="space-y-3">
+            {conversation.map((turn) => {
+              const isUser = turn.role === "user";
+              return (
+                <div key={turn.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={
+                      isUser
+                        ? "max-w-[80%] rounded-2xl rounded-br-md px-4 py-3 bg-primary/15 border border-primary/15 text-foreground/80"
+                        : "max-w-[80%] rounded-2xl rounded-bl-md px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-foreground/60"
+                    }
+                  >
+                    {!isUser && (
+                      <span className="block text-[10px] tracking-wider text-muted-foreground/35 mb-1 font-light">
+                        양
+                      </span>
+                    )}
+                    <p className="text-sm font-light leading-relaxed whitespace-pre-wrap">{turn.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex flex-col space-y-3 w-full mt-auto">

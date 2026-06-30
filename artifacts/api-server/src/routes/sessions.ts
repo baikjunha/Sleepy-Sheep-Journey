@@ -320,33 +320,35 @@ JSON으로 응답하세요: { "text": "공감 문장." }`;
   }
 });
 
-// 감정 → 색채·형태 매핑 심리학 프레임워크.
-// gpt-5-mini가 대화의 감정을 구체적인 시각 속성(명도/채도/색상, 윤곽선, 방향성, 복잡도)으로 번역하도록 안내한다.
+// 감정 → 색채·형태 매핑 프레임워크 (6가지 감정 원형 기반).
+// gpt-5-mini가 대화의 감정을 6원형(기쁨/분노/슬픔/평온/공포/신뢰)의 색·형태로 번역하도록 안내한다.
 const SHEEP_SPEC_SYSTEM_PROMPT = `당신은 사용자의 수면 전 회고 대화를 바탕으로 감정 양(Sheep) 생성 스펙을 만드는 전문가입니다.
 
-당신은 아래 "감정-시각 매핑 심리학 프레임워크"를 반드시 적용하여, 대화에서 읽어낸 감정을 구체적인 색·형태 선택으로 번역해야 합니다.
+양은 반드시 "납작한 2D 픽셀 아트 양"으로, 옆모습(side profile)으로 네 다리로 서 있는 단순한 형태여야 합니다. 아래 6가지 감정 원형(archetype)을 기준으로, 대화에서 읽어낸 감정에 가장 가까운 원형을 고르거나 혼합하여 양의 색·형태를 결정하세요.
 
-[1. 색채의 3속성으로 감정 차원 조절]
-- 명도(Brightness) = 긍정/부정(Pleasure): 명도가 높을수록(밝은 색) 기쁨·행복·편안함 등 긍정 감정. 명도가 낮을수록(어두운 색) 우울·슬픔·두려움 등 부정 감정.
-- 채도(Saturation) = 감정의 강도/흥분(Arousal): 채도가 높을수록(선명한 색) 흥분·분노·열정 등 강렬한 상태. 채도가 낮을수록(탁하고 흐린 색) 차분함·무기력·안정 등 낮은 에너지.
-- 색상(Hue) 기본 매핑: 빨강=높은 각성(분노 또는 강렬한 열정/사랑), 노랑=높은 기쁨·희망·활기, 파랑=편안·차분·신뢰(단 명도가 극도로 낮으면 깊은 슬픔·고립), 초록=휴식·평화·안도, 무채색(검정/회색)=우울·슬픔·불안·공포·통제감 상실.
-  예) 격렬한 분노=채도·명도 모두 높은 강렬한 빨강. 식어가는 실망=채도를 낮춰 회색에 가깝게 탁해지는 붉은색.
+[6가지 감정 원형 — 색과 형태의 기준]
+1. 기쁨 (Joy): 노란색·주황색, 둥근 원형 양털. 부드럽고 원만한 곡선으로 유대감과 에너지를 표현.
+2. 분노 (Anger): 빨간색, 날카로운 삼각형 가시 모양 양털. 뾰족한 각과 정점으로 공격성·긴장감·폭발적 에너지를 표현.
+3. 슬픔 (Sadness): 파란색·회색, 아래로 처지고 중력에 순응하는 형태, 경계가 흐릿함. 무거운 우울을 표현.
+4. 평온 (Peace): 녹색·연하늘색, 수평선·직사각형의 가로로 긴 형태. 시각적 안정감과 균형을 표현.
+5. 공포 (Fear): 검정색·보라색, 불규칙한 지그재그의 날카로운 양털. 예측 불가능함으로 위협·불안을 표현.
+6. 신뢰 (Trust): 파란색·남색, 사방의 길이가 같은 정사각형·각진 형태. 정직과 견고함을 표현.
 
-[2. 형태(윤곽선·방향성·복잡도)로 감정 표현]
-- 윤곽선: 둥근 형태(원·타원·부드러운 곡선)=심리적 안정·편안함·기쁨·친근함. 뾰족한 형태(삼각형·별·지그재그)=높은 각성·긴장·위협·분노.
-- 방향성/대칭: 수평·대칭(정사각형·직사각형·수평선)=평온·무거운 슬픔·이성적 통제·정적인 상태. 사선·비대칭(역삼각형·기울어진 마름모·사선)=불안·혼란·역동성·통제 불능의 흥분.
-- 복잡도/밀도: 단순하고 여백이 뚫린 형태=차분함·홀가분함·공허함·외로움. 복잡하게 얽히거나 꽉 찬 형태=스트레스·억압·복잡한 심경·폭발적 감정의 혼재.
+[색채 3속성 보조 규칙]
+- 명도(Brightness)=긍정/부정: 밝을수록 긍정, 어두울수록 부정.
+- 채도(Saturation)=감정 강도/흥분: 선명할수록 강렬, 탁할수록 차분.
+- 위 원형의 베이스 색상에 명도·채도를 더해 감정의 미묘한 정도(예: 식어가는 실망=탁한 붉은색)를 조절하세요.
 
 규칙:
-- 위 프레임워크에 따라 dominantEmotions를 먼저 정한 뒤, 그 감정을 명도·채도·색상·윤곽선·방향성·복잡도로 번역하세요.
-- colorIntent에는 색상 이름뿐 아니라 명도(밝음/어두움)와 채도(선명함/탁함) 수준을 함께 명시하세요.
-- shapeIntent에는 윤곽선(둥글다/뾰족하다), 방향성(수평·대칭/사선·비대칭), 복잡도(단순/복잡)를 명시하세요.
-- imagePrompt(영어)에는 위에서 정한 구체적 명도/채도/색상, 양의 실루엣과 포즈의 둥글거나 각진 정도, 구도의 대칭/기울기, 배경의 단순함/복잡함, 상징 도형을 모두 반영하세요.
-- 민감한 개인 사건을 이미지 프롬프트에 직접 넣지 말고 감정·색·형태·질감으로 추상화하세요.
-- 이미지는 픽셀 아트 양 스타일이며 텍스트가 없어야 합니다.
+- dominantEmotions를 먼저 정한 뒤, 위 6원형 중 가장 가까운 것을 기준으로 색(원형 베이스 색 + 명도/채도)과 형태(원형의 윤곽선)를 결정하세요.
+- colorIntent에는 원형 베이스 색상과 명도(밝음/어두움)·채도(선명함/탁함)를 함께 명시하세요.
+- shapeIntent에는 어떤 원형의 형태(둥근 원형/삼각 가시/처진 곡선/가로 직사각형/지그재그/정사각형)인지 명시하세요.
+- imagePrompt(영어)에는 "flat 2D pixel art sheep, side profile, standing"을 기본으로, 위에서 정한 원형의 구체적 색과 양털 실루엣 형태를 반영하세요.
+- 민감한 개인 사건을 이미지 프롬프트에 직접 넣지 말고 감정·색·형태로 추상화하세요.
+- 이미지에 텍스트가 없어야 합니다.
 - 반드시 JSON만 출력하고, 마크다운 코드블록 없이 순수 JSON으로만 응답하세요.`;
 
-const IMAGE_STYLE_SUFFIX = `Style: cute pixel art sheep character. Apply emotion-to-visual psychology precisely: brightness encodes pleasure (brighter = more positive), saturation encodes arousal (more vivid = more intense), and hue follows the emotional base described above. Shape language matters: rounded silhouettes for calm/comfort, sharper angular accents for tension; symmetric horizontal composition for stable/heavy-sad moods, tilted diagonal composition for restless/anxious moods; sparse open background for calm/lonely feelings, denser busy background for stress/conflict. Clear wool texture, small symbolic details, sheep centered and clearly visible, dark calming night background. No text in the image.`;
+const IMAGE_STYLE_SUFFIX = `Style: flat 2D pixel art sheep, side profile view, standing on four simple blocky legs, retro low-resolution pixel sprite look, bold clean pixels. The sheep follows one of six emotion archetypes — Joy: yellow/orange round circular wool with soft curves; Anger: red sharp triangular spiky wool; Sadness: blue/gray drooping wool sagging with gravity and blurred edges; Peace: green/light-blue horizontally elongated rectangular wool with horizontal lines; Fear: black/purple irregular jagged zigzag wool; Trust: blue/navy square boxy wool with sharp equal corners. Use brightness for positivity and saturation for intensity. Single sheep centered, simple soft dark calming night background, gentle and sleep-friendly. No text in the image.`;
 
 interface SheepSpecData {
   emotionSummary?: string;
@@ -368,8 +370,8 @@ async function buildSheepSpec(sourceText: string): Promise<SheepSpecData> {
       { role: "system", content: SHEEP_SPEC_SYSTEM_PROMPT },
       {
         role: "user",
-        content: `다음은 오늘 밤 사용자와 양의 대화(또는 감정 기록)입니다:\n\n${sourceText}\n\n위 내용을 감정-시각 매핑 프레임워크로 분석하여 다음 JSON 형식으로만 응답해주세요 (마크다운 없이 순수 JSON):
-{"emotionSummary":"감정 요약","dominantEmotions":["감정1","감정2"],"colorIntent":"명도/채도/색상을 포함한 색감","textureIntent":"촉감","shapeIntent":"윤곽선/방향성/복잡도를 포함한 형태","patternIntent":"패턴","symbolIntent":"상징","sheepPersonality":"성격","imagePrompt":"pixel art sheep prompt in english that encodes brightness, saturation, hue, contour, symmetry and complexity"}`,
+        content: `다음은 오늘 밤 사용자와 양의 대화(또는 감정 기록)입니다:\n\n${sourceText}\n\n위 내용을 6가지 감정 원형(기쁨/분노/슬픔/평온/공포/신뢰) 프레임워크로 분석하여 다음 JSON 형식으로만 응답해주세요 (마크다운 없이 순수 JSON):
+{"emotionSummary":"감정 요약","dominantEmotions":["감정1","감정2"],"colorIntent":"가장 가까운 원형의 베이스 색상과 명도(밝음/어두움)·채도(선명함/탁함)","textureIntent":"양털의 질감","shapeIntent":"원형의 형태(둥근 원형/삼각 가시/처진 곡선/가로 직사각형/지그재그/정사각형)","patternIntent":"패턴","symbolIntent":"상징","sheepPersonality":"성격","imagePrompt":"flat 2D pixel art sheep, side profile, standing — english prompt encoding the chosen archetype's color and wool silhouette shape"}`,
       },
     ],
   });

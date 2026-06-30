@@ -63,9 +63,15 @@ export default function SheepResultScreen() {
       </div>
 
       {/* Sheep image */}
-      <div className="w-full max-w-xs aspect-square rounded-3xl overflow-hidden mb-8 border border-white/5 shadow-2xl">
+      <div
+        className="w-full max-w-xs aspect-square rounded-3xl overflow-hidden mb-8 border border-white/5 shadow-2xl flex items-center justify-center"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 38%, rgba(120,104,210,0.18) 0%, rgba(10,9,24,0) 70%), #0b0a18",
+        }}
+      >
         {sheep.imageUrl ? (
-          <img src={sheep.imageUrl} alt={sheep.name} className="w-full h-full object-cover animate-sheep" />
+          <img src={sheep.imageUrl} alt={sheep.name} className="w-[88%] h-[88%] object-contain animate-sheep" />
         ) : (
           <div className="w-full h-full bg-card/20 flex items-center justify-center text-muted-foreground/20">
             이미지가 없습니다

@@ -62,12 +62,12 @@ export default function History() {
               onClick={() => setLocation(`/sheep/${sheep.id}`)}
               className="bg-card/30 border border-border/20 rounded-2xl overflow-hidden cursor-pointer hover:border-primary/20 hover:bg-card/50 transition-all duration-500 group"
             >
-              <div className="aspect-square bg-background/40 relative overflow-hidden">
+              <div className="aspect-square bg-background/40 relative overflow-hidden flex items-center justify-center">
                 {sheep.imageUrl ? (
                   <img
                     src={sheep.imageUrl}
                     alt={sheep.name}
-                    className="w-full h-full object-cover animate-sheep"
+                    className="w-[86%] h-[86%] object-contain animate-sheep"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-lg font-light tracking-widest">

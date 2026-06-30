@@ -144,24 +144,22 @@
   animation: breathe 4s ease-in-out infinite;
 }
 
-/* Idle "alive" motion for generated sheep — gentle bob + subtle squash & sway */
+/* Idle "alive" motion for the (transparent) sheep itself — gentle bob, squash & sway */
 @keyframes sheep-idle {
-  0%   { transform: scale(1.06) translateY(0) rotate(0deg); }
-  25%  { transform: scale(1.06) translateY(-2.5%) rotate(-0.8deg); }
-  50%  { transform: scale(1.06) translateY(0) scaleY(0.985) rotate(0deg); }
-  75%  { transform: scale(1.06) translateY(-2.5%) rotate(0.8deg); }
-  100% { transform: scale(1.06) translateY(0) rotate(0deg); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-5%) rotate(-1.2deg); }
+  50%      { transform: translateY(0) scaleY(0.97); }
+  75%      { transform: translateY(-5%) rotate(1.2deg); }
 }
 
 .animate-sheep {
-  transform-origin: 50% 100%;
-  animation: sheep-idle 5.5s ease-in-out infinite;
+  transform-origin: 50% 92%;
+  animation: sheep-idle 5s ease-in-out infinite;
   will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-sheep {
     animation: none;
-    transform: scale(1.06);
   }
 }

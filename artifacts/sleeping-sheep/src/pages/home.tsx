@@ -64,26 +64,8 @@ export default function Home() {
 
       {/* Centered content column */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm flex-1 text-center">
-        {/* Sheep illustration with soft purple glow */}
-        <div className="relative pointer-events-none mt-12 flex items-center justify-center">
-          <div
-            className="absolute rounded-full animate-breathe"
-            style={{
-              width: "min(78vw, 460px)",
-              height: "min(78vw, 460px)",
-              background:
-                "radial-gradient(circle, rgba(150,128,238,0.42) 0%, rgba(150,128,238,0) 66%)",
-            }}
-          />
-          <img
-            src="/sheep-mascot.png"
-            alt="Sleeping Sheep"
-            className="w-[62vw] max-w-[360px] max-h-[40vh] h-auto relative animate-float object-contain"
-          />
-        </div>
-
         {/* Title block */}
-        <div className="mt-8">
+        <div className="mt-24">
           <div className="text-[11px] tracking-[0.32em] font-medium" style={{ color: "#8d84c2" }}>
             sleeping sheep
           </div>

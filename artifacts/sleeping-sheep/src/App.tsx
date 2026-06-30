@@ -8,6 +8,7 @@ import History from "@/pages/history";
 import SessionScreen from "@/pages/session";
 import SleepScreen from "@/pages/sleep";
 import SheepResultScreen from "@/pages/sheep-result";
+import ConversationScreen from "@/pages/conversation";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/history" component={History} />
       <Route path="/session" component={SessionScreen} />
       <Route path="/sleep" component={SleepScreen} />
+      <Route path="/sheep/:id/conversation" component={ConversationScreen} />
       <Route path="/sheep/:id" component={SheepResultScreen} />
       <Route component={NotFound} />
     </Switch>

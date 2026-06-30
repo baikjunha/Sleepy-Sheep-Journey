@@ -20,3 +20,16 @@ rest keep the old one.
   (and real OpenAI image cost). `regenerate-all` has an in-memory single-flight guard
   (`isRegeneratingAll`) that returns 409 on overlap, but the first call still runs for real.
 - To cleanly cancel a redundant/running job, restart the workflow (kills it; guard resets to false).
+
+## One-off image regeneration jobs
+
+The `@workspace/integrations-openai-ai-server` lib is **TS-source-only** (no standalone
+runnable JS; api-server bundles it via esbuild). It cannot be `await import()`-ed from the
+code_execution sandbox or run via plain `node` from the workspace root.
+
+**How to apply:** to run a one-off job that needs `generateImageBuffer` + DB (e.g. seed/patch
+specific sheep images), add a *temporary* fire-and-forget POST endpoint in
+`artifacts/api-server/src/routes/sessions.ts` (mirror the regenerate-all pattern: in-memory
+single-flight guard, respond 202, do work in background), restart the workflow, `curl` it once,
+poll `GET /api/sheep` until done, then delete the endpoint and restart again. The api-server
+workflow already has `AI_INTEGRATIONS_OPENAI_*` + `DATABASE_URL` wired.

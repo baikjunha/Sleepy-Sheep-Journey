@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SheepResultScreen() {
@@ -112,36 +113,23 @@ export default function SheepResultScreen() {
         )}
       </div>
 
-      {/* Conversation with the sheep */}
+      {/* Conversation entry button */}
       {conversation.length > 0 && (
-        <div className="w-full mb-10">
-          <p className="text-xs tracking-[0.3em] text-muted-foreground/35 font-sans uppercase mb-5 text-center">
-            오늘 밤 나눈 이야기
-          </p>
-          <div className="space-y-3">
-            {conversation.map((turn) => {
-              const isUser = turn.role === "user";
-              return (
-                <div key={turn.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={
-                      isUser
-                        ? "max-w-[80%] rounded-2xl rounded-br-md px-4 py-3 bg-primary/15 border border-primary/15 text-foreground/80"
-                        : "max-w-[80%] rounded-2xl rounded-bl-md px-4 py-3 bg-white/[0.04] border border-white/[0.06] text-foreground/60"
-                    }
-                  >
-                    {!isUser && (
-                      <span className="block text-[10px] tracking-wider text-muted-foreground/35 mb-1 font-light">
-                        양
-                      </span>
-                    )}
-                    <p className="text-sm font-light leading-relaxed whitespace-pre-wrap">{turn.text}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <button
+          onClick={() => setLocation(`/sheep/${id}/conversation`)}
+          className="w-full mb-10 flex items-center justify-between px-5 py-4 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-left hover:bg-white/[0.07] transition-all duration-300"
+        >
+          <span className="flex items-center gap-3">
+            <MessageCircle className="w-[18px] h-[18px] text-foreground/40" />
+            <span className="flex flex-col">
+              <span className="text-sm text-foreground/75 font-light">오늘 밤 나눈 이야기</span>
+              <span className="text-[11px] text-muted-foreground/30 font-light mt-0.5">
+                대화 {conversation.length}개 보기
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="w-[18px] h-[18px] text-muted-foreground/30" />
+        </button>
       )}
 
       {/* Actions */}

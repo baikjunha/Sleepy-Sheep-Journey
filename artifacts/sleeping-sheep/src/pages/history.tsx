@@ -1,18 +1,60 @@
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useListSheep } from "@workspace/api-client-react";
-import { format } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  isToday,
+  addMonths,
+  subMonths,
+} from "date-fns";
 import { ko } from "date-fns/locale";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+type Sheep = {
+  id: number;
+  name: string;
+  imageUrl: string;
+  dominantEmotion: string;
+  createdAt: Date | string;
+};
+
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function History() {
   const [, setLocation] = useLocation();
   const { data: sheeps, isLoading } = useListSheep();
+  const [view, setView] = useState<"grid" | "calendar">("grid");
+  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+
+  const sheepByDay = useMemo(() => {
+    const map = new Map<string, Sheep[]>();
+    (sheeps as Sheep[] | undefined)?.forEach((s) => {
+      const key = format(new Date(s.createdAt), "yyyy-MM-dd");
+      const arr = map.get(key);
+      if (arr) arr.push(s);
+      else map.set(key, [s]);
+    });
+    return map;
+  }, [sheeps]);
+
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
+    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 0 });
+    return eachDayOfInterval({ start, end });
+  }, [month]);
 
   return (
     <div className="min-h-screen p-6 max-w-lg mx-auto flex flex-col">
       {/* Header */}
-      <div className="flex items-center mb-2 pt-6">
+      <div className="flex items-center justify-between mb-2 pt-6">
         <Button
           variant="ghost"
           size="icon"
@@ -21,9 +63,20 @@ export default function History() {
         >
           <ChevronLeft className="w-5 h-5" />
         </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setView((v) => (v === "grid" ? "calendar" : "grid"))}
+          className="text-muted-foreground/40 hover:text-foreground"
+          aria-label={view === "grid" ? "달력으로 보기" : "모아 보기"}
+          aria-pressed={view === "calendar"}
+        >
+          {view === "grid" ? <CalendarDays className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+        </Button>
       </div>
 
-      <div className="mb-10 text-center">
+      <div className="mb-8 text-center">
         <p className="text-xs tracking-[0.3em] text-muted-foreground/40 font-sans uppercase mb-3">
           My Flock
         </p>
@@ -54,7 +107,7 @@ export default function History() {
             오늘의 양 만들기
           </Button>
         </div>
-      ) : (
+      ) : view === "grid" ? (
         <div className="grid grid-cols-2 gap-3">
           {sheeps?.map((sheep) => (
             <div
@@ -83,6 +136,111 @@ export default function History() {
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="select-none">
+          {/* Month navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMonth((m) => subMonths(m, 1))}
+              className="text-muted-foreground/40 hover:text-foreground h-8 w-8"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <p className="text-sm font-serif text-foreground/80">
+              {format(month, "yyyy년 M월", { locale: ko })}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMonth((m) => addMonths(m, 1))}
+              className="text-muted-foreground/40 hover:text-foreground h-8 w-8"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Weekday labels */}
+          <div className="grid grid-cols-7 mb-2">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="text-center text-[0.65rem] text-muted-foreground/35 font-light">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Day cells */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const key = format(day, "yyyy-MM-dd");
+              const daySheep = sheepByDay.get(key) ?? [];
+              const inMonth = isSameMonth(day, month);
+              const hero = daySheep[0];
+
+              const handleOpen = () => hero && setLocation(`/sheep/${hero.id}`);
+
+              return (
+                <div
+                  key={key}
+                  role={hero ? "button" : undefined}
+                  tabIndex={hero ? 0 : undefined}
+                  aria-label={
+                    hero
+                      ? `${format(day, "M월 d일", { locale: ko })}, ${hero.name}${
+                          daySheep.length > 1 ? ` 외 ${daySheep.length - 1}마리` : ""
+                        }`
+                      : undefined
+                  }
+                  onClick={handleOpen}
+                  onKeyDown={(e) => {
+                    if (hero && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      handleOpen();
+                    }
+                  }}
+                  className={`aspect-square rounded-xl border flex flex-col items-center justify-center relative transition-all duration-300 ${
+                    inMonth ? "border-border/15 bg-card/20" : "border-transparent opacity-30"
+                  } ${
+                    hero
+                      ? "cursor-pointer hover:border-primary/25 hover:bg-card/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+                      : ""
+                  } ${isToday(day) ? "ring-1 ring-primary/30" : ""}`}
+                >
+                  <span
+                    className={`absolute top-1 left-1.5 text-[0.6rem] font-light ${
+                      isToday(day) ? "text-primary/70" : "text-muted-foreground/30"
+                    }`}
+                  >
+                    {format(day, "d")}
+                  </span>
+
+                  {hero ? (
+                    hero.imageUrl ? (
+                      <img
+                        src={hero.imageUrl}
+                        alt={hero.name}
+                        className="w-[78%] h-[78%] object-contain mt-1"
+                      />
+                    ) : (
+                      <span className="text-[0.55rem] text-muted-foreground/25 tracking-widest">zzz</span>
+                    )
+                  ) : null}
+
+                  {daySheep.length > 1 && (
+                    <span className="absolute bottom-0.5 right-1 text-[0.55rem] text-primary/50 font-light">
+                      +{daySheep.length - 1}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-center text-[0.7rem] text-muted-foreground/30 font-light mt-6">
+            날짜를 눌러 그날의 양을 다시 만나보세요
+          </p>
         </div>
       )}
     </div>

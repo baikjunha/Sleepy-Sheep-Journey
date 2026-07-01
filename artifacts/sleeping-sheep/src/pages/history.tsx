@@ -33,6 +33,19 @@ export default function History() {
   const { data: sheeps, isLoading } = useListSheep();
   const [view, setView] = useState<"grid" | "calendar">("grid");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [page, setPage] = useState(0);
+
+  const PAGE_SIZE = 10;
+  const totalPages = sheeps ? Math.max(1, Math.ceil(sheeps.length / PAGE_SIZE)) : 1;
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedSheeps = useMemo(
+    () =>
+      (sheeps as Sheep[] | undefined)?.slice(
+        safePage * PAGE_SIZE,
+        safePage * PAGE_SIZE + PAGE_SIZE,
+      ) ?? [],
+    [sheeps, safePage],
+  );
 
   const sheepByDay = useMemo(() => {
     const map = new Map<string, Sheep[]>();
@@ -108,8 +121,9 @@ export default function History() {
           </Button>
         </div>
       ) : view === "grid" ? (
+        <>
         <div className="grid grid-cols-2 gap-3">
-          {sheeps?.map((sheep) => (
+          {pagedSheeps.map((sheep) => (
             <div
               key={sheep.id}
               onClick={() => setLocation(`/sheep/${sheep.id}`)}
@@ -137,6 +151,35 @@ export default function History() {
             </div>
           ))}
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-6 mt-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPage(Math.max(0, safePage - 1))}
+              disabled={safePage === 0}
+              className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 h-8 w-8"
+              aria-label="이전 페이지"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <p className="text-xs text-muted-foreground/40 font-light tabular-nums">
+              {safePage + 1} / {totalPages}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 h-8 w-8"
+              aria-label="다음 페이지"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+        </>
       ) : (
         <div className="select-none">
           {/* Month navigation */}

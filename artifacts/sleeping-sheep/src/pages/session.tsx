@@ -37,6 +37,75 @@ const getStepNumber = (state: string) => {
   return index >= 0 ? index + 1 : 1;
 };
 
+function VoiceOrb({
+  level,
+  tone,
+  active,
+}: {
+  level: number;
+  tone: "speak" | "listen" | "idle";
+  active: boolean;
+}) {
+  // lavender for the sheep's voice, emerald while listening
+  const rgb = tone === "listen" ? "16, 185, 129" : "150, 128, 238";
+  const core = 132;
+  const scale = 1 + level * 0.55;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
+      {/* Expanding ripple rings */}
+      {active &&
+        [0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="absolute rounded-full ripple-ring"
+            style={{
+              width: core,
+              height: core,
+              border: `1px solid rgba(${rgb}, 0.35)`,
+              animationDelay: `${i * 1.15}s`,
+            }}
+          />
+        ))}
+
+      {/* Soft outer glow that swells with the voice */}
+      <div
+        className="absolute rounded-full blur-2xl"
+        style={{
+          width: core * 1.7,
+          height: core * 1.7,
+          background: `radial-gradient(circle, rgba(${rgb}, ${0.1 + level * 0.28}) 0%, rgba(${rgb}, 0) 70%)`,
+          transform: `scale(${scale})`,
+          transition: "transform 90ms ease-out",
+        }}
+      />
+
+      {/* Core orb */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          width: core,
+          height: core,
+          background: `radial-gradient(circle at 50% 42%, rgba(${rgb}, 0.5) 0%, rgba(${rgb}, 0.14) 60%, rgba(${rgb}, 0) 100%)`,
+          transform: `scale(${scale})`,
+          boxShadow: `0 0 ${28 + level * 70}px rgba(${rgb}, ${0.18 + level * 0.32})`,
+          transition: "transform 90ms ease-out, box-shadow 90ms ease-out",
+        }}
+      />
+
+      {/* Steady inner dot with a gentle idle breath */}
+      <div
+        className={`absolute rounded-full ${active ? "" : "animate-breathe"}`}
+        style={{
+          width: 44,
+          height: 44,
+          background: `radial-gradient(circle, rgba(${rgb}, 0.6) 0%, rgba(${rgb}, 0.2) 100%)`,
+        }}
+      />
+    </div>
+  );
+}
+
 export default function SessionScreen() {
   const [, setLocation] = useLocation();
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -54,7 +123,7 @@ export default function SessionScreen() {
   const updateSession = useUpdateSession();
   const completeSession = useCompleteSession();
 
-  const { speak, isSpeaking, startListening, stopListening, isListening, transcript, interimTranscript } =
+  const { speak, isSpeaking, startListening, stopListening, isListening, transcript, interimTranscript, audioLevel } =
     useSpeech();
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -355,34 +424,20 @@ export default function SessionScreen() {
         </Button>
       </div>
 
-      {/* Sheep image — large, decorative, behind content */}
-      <div className="relative flex justify-center items-center pointer-events-none mt-4 mb-[-60px]">
-        {isSpeaking && (
-          <div className="absolute inset-0 bg-primary/8 rounded-full blur-3xl animate-breathe scale-[2]" />
-        )}
-        {isListening && (
-          <div className="absolute inset-0 bg-emerald-500/6 rounded-full blur-3xl animate-breathe scale-[1.8]" />
-        )}
-        <img
-          src="/sheep-mascot.png"
-          alt="Sleeping Sheep"
-          className={`w-[70vw] max-w-[420px] max-h-[40vh] h-auto object-contain drop-shadow-2xl transition-all duration-1000 ${
-            isSpeaking
-              ? "animate-float"
-              : isListening
-                ? "opacity-80"
-                : isProcessing
-                  ? "animate-pulse opacity-60"
-                  : "opacity-50"
-          }`}
+      {/* Voice-reactive orb — gently ripples with the sheep's voice */}
+      <div className="relative flex justify-center items-center pointer-events-none mt-14 mb-2">
+        <VoiceOrb
+          level={audioLevel}
+          tone={isListening ? "listen" : isSpeaking ? "speak" : "idle"}
+          active={isSpeaking || isListening}
         />
       </div>
 
       {/* Text + controls */}
       <div className="flex-1 flex flex-col items-center justify-center max-w-md w-full px-6 relative z-10">
-        {/* Sheep text */}
-        <div className="min-h-[120px] w-full text-center flex flex-col justify-center">
-          <p className="text-lg font-serif leading-loose text-foreground/80 transition-opacity duration-700">
+        {/* Sheep text — small narration subtitle */}
+        <div className="min-h-[64px] w-full text-center flex flex-col justify-center">
+          <p className="text-sm font-light leading-relaxed tracking-wide text-foreground/55 max-w-xs mx-auto transition-opacity duration-700">
             {sheepText}
           </p>
         </div>

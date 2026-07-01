@@ -20,6 +20,11 @@ export function useSpeech(language = "ko-KR") {
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  // Guards against overlapping narrations: each speak() bumps this token and
+  // aborts the previous request, so only the latest call ever plays audio.
+  const playIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
   const stopAnalysis = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
@@ -111,6 +116,8 @@ export function useSpeech(language = "ko-KR") {
 
   useEffect(() => {
     return () => {
+      playIdRef.current++;
+      if (abortRef.current) abortRef.current.abort();
       cleanupAudio();
       if (audioCtxRef.current) {
         void audioCtxRef.current.close().catch(() => {});
@@ -148,6 +155,12 @@ export function useSpeech(language = "ko-KR") {
 
   const speak = useCallback(
     (text: string, onEnd?: () => void) => {
+      // Supersede any in-flight or playing narration so only this call is heard.
+      const myId = ++playIdRef.current;
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       // Stop any ongoing speech or recognition
       if (synthesisRef.current) synthesisRef.current.cancel();
       cleanupAudio();
@@ -161,6 +174,7 @@ export function useSpeech(language = "ko-KR") {
       setIsListening(false);
 
       if (!text.trim()) {
+        setIsSpeaking(false);
         if (onEnd) onEnd();
         return;
       }
@@ -173,6 +187,7 @@ export function useSpeech(language = "ko-KR") {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text }),
+            signal: controller.signal,
           });
 
           if (!res.ok) {
@@ -180,6 +195,10 @@ export function useSpeech(language = "ko-KR") {
           }
 
           const blob = await res.blob();
+
+          // A newer speak() call superseded this one — discard silently.
+          if (myId !== playIdRef.current) return;
+
           const url = URL.createObjectURL(blob);
           audioUrlRef.current = url;
 
@@ -189,6 +208,7 @@ export function useSpeech(language = "ko-KR") {
           startAnalysis(audio);
 
           const finish = () => {
+            if (myId !== playIdRef.current) return;
             setIsSpeaking(false);
             cleanupAudio();
             if (onEnd) onEnd();
@@ -196,6 +216,7 @@ export function useSpeech(language = "ko-KR") {
 
           audio.onended = finish;
           audio.onerror = () => {
+            if (myId !== playIdRef.current) return;
             setIsSpeaking(false);
             cleanupAudio();
             // Fall back to browser TTS on playback error
@@ -204,6 +225,8 @@ export function useSpeech(language = "ko-KR") {
 
           await audio.play();
         } catch (err) {
+          // Ignore aborts (a newer narration took over) and stale results.
+          if (controller.signal.aborted || myId !== playIdRef.current) return;
           console.error("ElevenLabs TTS failed, falling back to browser", err);
           cleanupAudio();
           speakWithBrowser(text, onEnd);

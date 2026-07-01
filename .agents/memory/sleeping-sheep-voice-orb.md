@@ -18,3 +18,11 @@ The live conversation screen shows a lavender orb with ripple rings that scales 
 - Must connect `source -> analyser -> destination`, or the audio goes silent.
 - Unmount cleanup must call the full audio cleanup (pause + revoke object URL + stop rAF/disconnect) AND `AudioContext.close()`, else playback/URLs leak after navigation.
 - In `speak`, stop STT by calling `recognitionRef.current.stop()` directly rather than depending on a `stopListening` callback that closes over `isListening` — avoids a stale-closure race and a TDZ in the deps array (stopListening is declared later).
+
+## Double-narration overlap (learned from a real bug)
+`speak` starts with `cleanupAudio()` to stop the prior narration, but that does NOT cancel an in-flight TTS `fetch`. If `speak` is called twice with both fetches still pending, both resolve and both play → two overlapping ElevenLabs voices (seen as two `POST /api/tts` 200s at startup, only one transcript saved).
+
+**Fix:** each `speak` bumps a `playIdRef` token and aborts the previous request via an `AbortController`; after the fetch resolves, bail if `myId !== playIdRef.current`, and swallow `AbortError`/stale results. Unmount also bumps the token + aborts.
+
+**Why:** cleanup-on-entry only covers audio already playing, not requests in flight; a token+abort guarantees exactly one narration regardless of how many times `speak` fires.
+

@@ -37,6 +37,18 @@ const getStepNumber = (state: string) => {
   return index >= 0 ? index + 1 : 1;
 };
 
+// Generated once at module scope so star positions stay fixed across re-renders
+// (the session re-renders constantly during speech; regenerating would make them jump).
+const SESSION_STARS = Array.from({ length: 30 }).map((_, i) => ({
+  id: i,
+  size: Math.random() * 2 + 0.5,
+  top: Math.random() * 100,
+  left: Math.random() * 100,
+  opacity: Math.random() * 0.2 + 0.05,
+  duration: Math.random() * 5 + 4,
+  delay: Math.random() * 5,
+}));
+
 function VoiceOrb({
   level,
   tone,
@@ -358,16 +370,6 @@ export default function SessionScreen() {
 
   const currentStepNum = getStepNumber(currentState);
   const totalSteps = 6;
-
-  const SESSION_STARS = Array.from({ length: 30 }).map((_, i) => ({
-    id: i,
-    size: Math.random() * 2 + 0.5,
-    top: Math.random() * 100,
-    left: Math.random() * 100,
-    opacity: Math.random() * 0.2 + 0.05,
-    duration: Math.random() * 5 + 4,
-    delay: Math.random() * 5,
-  }));
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden">

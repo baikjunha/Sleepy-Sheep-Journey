@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "EYrIyhjgVSNCxNr1zHtgH"
+uri = "file://artifacts/sleeping-sheep/public/sleep-music.mp3"
+type = "audio"
+title = "sleep ambient"

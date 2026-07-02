@@ -1,3 +1,4 @@
 - [Sleeping Sheep background jobs](sleeping-sheep-background-jobs.md) — sheep image gen/regen are in-process fire-and-forget (~55s each); don't restart api-server mid-run, don't casually trigger the POST endpoints (real cost).
 - [Sleeping Sheep image convention](sleeping-sheep-image-convention.md) — sheep are transparent-bg pixel sprites (6 emotion archetypes); display object-contain + animate so only the sheep moves, not the box.
 - [Sleeping Sheep voice orb](sleeping-sheep-voice-orb.md) — session screen orb reacts to TTS amplitude via AnalyserNode on the ElevenLabs <audio>; browser SpeechSynthesis fallback (no ELEVENLABS_API_KEY) can't drive it, so level stays 0.
+- [Sleeping Sheep wind-down](sleeping-sheep-wind-down.md) — /rest/:id end screen: emotion summary + static looping sleep-music.mp3 that fades/dims over 5min; music autoplay needs tap-to-resume.

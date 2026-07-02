@@ -135,6 +135,16 @@ export default function SheepResultScreen() {
       {/* Actions */}
       <div className="flex flex-col space-y-3 w-full mt-auto">
         <Button
+          onClick={() => setLocation(`/rest/${id}`)}
+          className="w-full py-5 rounded-2xl text-white hover:scale-[1.01] transition-transform duration-500"
+          style={{
+            background: "linear-gradient(135deg, #8275e8 0%, #5b4fc6 100%)",
+            boxShadow: "0 10px 26px rgba(108,88,224,0.35)",
+          }}
+        >
+          이제 잠들기
+        </Button>
+        <Button
           onClick={() => setLocation("/history")}
           className="w-full py-5 rounded-2xl bg-white/[0.05] text-foreground/60 hover:bg-white/[0.08] border border-white/[0.06] transition-all duration-500"
         >

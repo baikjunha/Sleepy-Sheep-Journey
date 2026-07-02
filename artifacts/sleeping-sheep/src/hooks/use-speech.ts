@@ -9,8 +9,14 @@ export function useSpeech(language = "ko-KR") {
   const [interimTranscript, setInterimTranscript] = useState("");
 
   const [audioLevel, setAudioLevel] = useState(0);
+  const [micBlocked, setMicBlocked] = useState(false);
 
   const recognitionRef = useRef<any>(null);
+  // Whether we WANT to be listening right now. The browser ends recognition on
+  // its own (e.g. "no-speech" after ~8s of silence); while this is true we
+  // auto-restart so the mic stays live until stopListening()/speak().
+  const shouldListenRef = useRef(false);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const synthesisRef = useRef<SpeechSynthesis | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -118,6 +124,11 @@ export function useSpeech(language = "ko-KR") {
     return () => {
       playIdRef.current++;
       if (abortRef.current) abortRef.current.abort();
+      shouldListenRef.current = false;
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
       cleanupAudio();
       if (audioCtxRef.current) {
         void audioCtxRef.current.close().catch(() => {});
@@ -134,9 +145,14 @@ export function useSpeech(language = "ko-KR") {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // Stop any ongoing speech or recognition
+      // Stop any ongoing speech or recognition (and its auto-restart loop)
       if (synthesisRef.current) synthesisRef.current.cancel();
       cleanupAudio();
+      shouldListenRef.current = false;
+      if (restartTimerRef.current) {
+        clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = null;
+      }
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
@@ -211,60 +227,120 @@ export function useSpeech(language = "ko-KR") {
     [cleanupAudio, startAnalysis],
   );
 
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+  }, []);
+
   const startListening = useCallback((onResult: (text: string, isFinal: boolean) => void) => {
-    if (!recognitionRef.current) return;
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      // Web Speech API unavailable in this browser — surface it so the UI
+      // can offer text input instead.
+      setMicBlocked(true);
+      return;
+    }
 
     // Stop speaking if listening
     if (synthesisRef.current) synthesisRef.current.cancel();
     setIsSpeaking(false);
 
-    try {
-      recognitionRef.current.start();
-      setIsListening(true);
-      setTranscript("");
-      setInterimTranscript("");
+    shouldListenRef.current = true;
+    clearRestartTimer();
+    setTranscript("");
+    setInterimTranscript("");
 
-      recognitionRef.current.onresult = (event: any) => {
-        let final = "";
-        let interim = "";
+    recognition.onresult = (event: any) => {
+      let final = "";
+      let interim = "";
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+
+      if (final) {
+        setTranscript((prev) => prev + final);
+        onResult(final, true);
+      }
+      setInterimTranscript(interim);
+    };
+
+    recognition.onerror = (event: any) => {
+      const code = event?.error;
+      // Fatal: permission denied or no capture device — stop retrying and
+      // tell the UI so it can fall back to text input.
+      if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture") {
+        console.error("Speech recognition blocked:", code);
+        shouldListenRef.current = false;
+        setMicBlocked(true);
+        setIsListening(false);
+        return;
+      }
+      // Transient ("no-speech", "network", "aborted"): onend fires next and
+      // handles the restart while shouldListen is still true.
+      console.warn("Speech recognition error (will retry):", code);
+    };
+
+    const tryStart = (attempt: number) => {
+      if (!shouldListenRef.current) return;
+      try {
+        recognition.start();
+        setIsListening(true);
+        // Mic works again — clear any earlier "blocked" state so the UI can
+        // return to voice mode.
+        setMicBlocked(false);
+      } catch (e) {
+        // Usually InvalidStateError: the previous session hasn't fully shut
+        // down yet. Abort it and retry shortly.
+        if (attempt < 3) {
+          try {
+            recognition.abort();
+          } catch {
+            /* noop */
           }
+          clearRestartTimer();
+          restartTimerRef.current = setTimeout(() => tryStart(attempt + 1), 350);
+        } else {
+          console.error("Error starting recognition", e);
+          shouldListenRef.current = false;
+          setMicBlocked(true);
+          setIsListening(false);
         }
+      }
+    };
 
-        if (final) {
-          setTranscript((prev) => prev + final);
-          onResult(final, true);
-        }
-        setInterimTranscript(interim);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-        // Sometimes it ends abruptly, we might need to handle silence
-      };
-      
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
-        setIsListening(false);
-      };
-
-    } catch (e) {
-      console.error("Error starting recognition", e);
+    recognition.onend = () => {
       setIsListening(false);
-    }
-  }, []);
+      // The browser regularly ends recognition on its own (silence timeout).
+      // Keep the mic alive while the app still expects the user to talk,
+      // using the same bounded-retry start path.
+      if (shouldListenRef.current) {
+        clearRestartTimer();
+        restartTimerRef.current = setTimeout(() => tryStart(0), 300);
+      }
+    };
+
+    tryStart(0);
+  }, [clearRestartTimer]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+    shouldListenRef.current = false;
+    clearRestartTimer();
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        /* noop */
+      }
     }
-  }, [isListening]);
+    setIsListening(false);
+  }, [clearRestartTimer]);
 
   return {
     speak,
@@ -275,5 +351,6 @@ export function useSpeech(language = "ko-KR") {
     transcript,
     interimTranscript,
     audioLevel,
+    micBlocked,
   };
 }

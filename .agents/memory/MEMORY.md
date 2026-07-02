@@ -3,3 +3,4 @@
 - [Sleeping Sheep voice orb](sleeping-sheep-voice-orb.md) — session screen orb reacts to TTS amplitude via AnalyserNode on the ElevenLabs <audio>; browser SpeechSynthesis fallback (no ELEVENLABS_API_KEY) can't drive it, so level stays 0.
 - [Sleeping Sheep wind-down](sleeping-sheep-wind-down.md) — /rest/:id end screen: emotion summary + static looping sleep-music.mp3 that fades/dims over 5min; music autoplay needs tap-to-resume.
 - [Prod data seeding](sleeping-sheep-prod-seed.md) — prod DB is separate & agent-read-only; sheep data ships via seed JSON + seed-on-empty at server startup; republish to apply.
+- [Web Speech STT quirks](web-speech-stt-quirks.md) — browser auto-ends recognition; voice UIs need an onend keep-alive loop + bounded start() retries, and a mic-blocked → text-input fallback.

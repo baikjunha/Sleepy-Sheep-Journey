@@ -135,7 +135,7 @@ export default function SessionScreen() {
   const updateSession = useUpdateSession();
   const completeSession = useCompleteSession();
 
-  const { speak, isSpeaking, startListening, stopListening, isListening, transcript, interimTranscript, audioLevel } =
+  const { speak, isSpeaking, startListening, stopListening, isListening, transcript, interimTranscript, audioLevel, micBlocked } =
     useSpeech();
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,10 +200,13 @@ export default function SessionScreen() {
 
   const beginListening = useCallback(
     (sid: number) => {
+      // Mic unusable: stay in text-input mode and don't arm the
+      // "fell asleep" fallback — the user is answering by typing.
+      if (micBlocked) return;
       startListening(() => {});
       startNoInputTimer(() => handleFallback(sid));
     },
-    [startListening, startNoInputTimer, handleFallback],
+    [micBlocked, startListening, startNoInputTimer, handleFallback],
   );
 
   const handleUserSubmit = useCallback(
@@ -212,7 +215,9 @@ export default function SessionScreen() {
       clearTimers();
       stopListening();
       setIsProcessing(true);
-      setIsTextInput(false);
+      // Keep text mode if the mic is unusable — otherwise the next turn
+      // would strand the user with no way to answer.
+      setIsTextInput(micBlocked);
       setTextValue("");
 
       const cleanText = text.trim();
@@ -322,6 +327,7 @@ export default function SessionScreen() {
     },
     [
       isProcessing,
+      micBlocked,
       clearTimers,
       stopListening,
       saveTranscriptTurn,
@@ -359,8 +365,35 @@ export default function SessionScreen() {
         stopListening();
         handleUserSubmit(captured, sessionId, currentState);
       }, 4000);
+    } else if (isListening && interimTranscript) {
+      // The user is mid-sentence — don't let the no-input fallback fire.
+      if (noInputTimer.current) clearTimeout(noInputTimer.current);
     }
   }, [transcript, interimTranscript]);
+
+  // Mic unavailable (permission denied / unsupported browser): switch to
+  // text input so the conversation can continue, and stop the fallback
+  // timer that would otherwise silently end the session.
+  useEffect(() => {
+    if (micBlocked) {
+      clearTimers();
+      setIsTextInput(true);
+    }
+  }, [micBlocked, clearTimers]);
+
+  // While typing, the 18s "fell asleep" fallback shouldn't end the session.
+  const handleToggleTextInput = () => {
+    setIsTextInput((v) => {
+      const next = !v;
+      if (next) {
+        clearTimers();
+        stopListening();
+      } else if (sessionId && !isSpeaking && !isProcessing) {
+        beginListening(sessionId);
+      }
+      return next;
+    });
+  };
 
   const handleTextSubmit = () => {
     if (textValue.trim() && sessionId) {
@@ -419,7 +452,7 @@ export default function SessionScreen() {
           variant="ghost"
           size="sm"
           data-testid="toggle-text-input"
-          onClick={() => setIsTextInput((v) => !v)}
+          onClick={handleToggleTextInput}
           className="text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors duration-300"
         >
           {isTextInput ? <Mic className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}

@@ -65,7 +65,12 @@ export default function Home() {
       {/* Centered content column */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm flex-1 text-center">
         {/* Title block */}
-        <div className="mt-24">
+        <div className="mt-20">
+          <img
+            src="/logo.png"
+            alt="Sleeping Sheep"
+            className="w-32 h-32 mx-auto mb-4 object-contain animate-float drop-shadow-2xl"
+          />
           <div className="text-[11px] tracking-[0.32em] font-medium" style={{ color: "#8d84c2" }}>
             sleeping sheep
           </div>

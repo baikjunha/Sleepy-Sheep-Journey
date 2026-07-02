@@ -126,33 +126,6 @@ export function useSpeech(language = "ko-KR") {
     };
   }, [cleanupAudio]);
 
-  // Fallback to browser TTS if ElevenLabs is unavailable
-  const speakWithBrowser = useCallback(
-    (text: string, onEnd?: () => void) => {
-      if (!synthesisRef.current) {
-        if (onEnd) onEnd();
-        return;
-      }
-      synthesisRef.current.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = language;
-      utterance.rate = 0.8;
-      utterance.pitch = 0.9;
-      utterance.volume = 0.7;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        if (onEnd) onEnd();
-      };
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-        if (onEnd) onEnd();
-      };
-      synthesisRef.current.speak(utterance);
-    },
-    [language],
-  );
-
   const speak = useCallback(
     (text: string, onEnd?: () => void) => {
       // Supersede any in-flight or playing narration so only this call is heard.
@@ -219,21 +192,23 @@ export function useSpeech(language = "ko-KR") {
             if (myId !== playIdRef.current) return;
             setIsSpeaking(false);
             cleanupAudio();
-            // Fall back to browser TTS on playback error
-            speakWithBrowser(text, onEnd);
+            // No browser-TTS fallback: continue the flow silently.
+            if (onEnd) onEnd();
           };
 
           await audio.play();
         } catch (err) {
           // Ignore aborts (a newer narration took over) and stale results.
           if (controller.signal.aborted || myId !== playIdRef.current) return;
-          console.error("ElevenLabs TTS failed, falling back to browser", err);
+          console.error("ElevenLabs TTS failed", err);
+          setIsSpeaking(false);
           cleanupAudio();
-          speakWithBrowser(text, onEnd);
+          // No browser-TTS fallback: continue the flow silently.
+          if (onEnd) onEnd();
         }
       })();
     },
-    [cleanupAudio, speakWithBrowser, startAnalysis],
+    [cleanupAudio, startAnalysis],
   );
 
   const startListening = useCallback((onResult: (text: string, isFinal: boolean) => void) => {

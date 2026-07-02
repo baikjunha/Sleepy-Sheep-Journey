@@ -2,3 +2,4 @@
 - [Sleeping Sheep image convention](sleeping-sheep-image-convention.md) — sheep are transparent-bg pixel sprites (6 emotion archetypes); display object-contain + animate so only the sheep moves, not the box.
 - [Sleeping Sheep voice orb](sleeping-sheep-voice-orb.md) — session screen orb reacts to TTS amplitude via AnalyserNode on the ElevenLabs <audio>; browser SpeechSynthesis fallback (no ELEVENLABS_API_KEY) can't drive it, so level stays 0.
 - [Sleeping Sheep wind-down](sleeping-sheep-wind-down.md) — /rest/:id end screen: emotion summary + static looping sleep-music.mp3 that fades/dims over 5min; music autoplay needs tap-to-resume.
+- [Prod data seeding](sleeping-sheep-prod-seed.md) — prod DB is separate & agent-read-only; sheep data ships via seed JSON + seed-on-empty at server startup; republish to apply.

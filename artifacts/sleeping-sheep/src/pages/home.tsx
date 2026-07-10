@@ -51,6 +51,9 @@ export default function Home() {
         privacy: "rgba(170,163,210,0.4)",
         gear: "rgba(170,163,210,0.55)",
         gearBg: "rgba(255,255,255,0.05)",
+        buttonBg: "linear-gradient(135deg, #8275e8 0%, #5b4fc6 100%)",
+        buttonShadow: "0 10px 26px rgba(108,88,224,0.42)",
+        buttonText: "#ffffff",
       }
     : {
         background:
@@ -63,6 +66,9 @@ export default function Home() {
         privacy: "rgba(110,94,72,0.5)",
         gear: "rgba(110,94,72,0.6)",
         gearBg: "rgba(0,0,0,0.05)",
+        buttonBg: "linear-gradient(135deg, #e3b063 0%, #cf9445 100%)",
+        buttonShadow: "0 10px 26px rgba(176,124,51,0.3)",
+        buttonText: "#3a2a12",
       };
 
   return (
@@ -132,10 +138,11 @@ export default function Home() {
           <button
             onClick={handleStart}
             disabled={isStarting}
-            className="w-full h-14 rounded-[20px] text-white text-base font-medium tracking-[0.06em] flex items-center justify-center gap-2.5 transition-transform duration-300 hover:scale-[1.015] active:scale-[0.99] disabled:opacity-70"
+            className="w-full h-14 rounded-[20px] text-base font-medium tracking-[0.06em] flex items-center justify-center gap-2.5 transition-transform duration-300 hover:scale-[1.015] active:scale-[0.99] disabled:opacity-70"
             style={{
-              background: "linear-gradient(135deg, #8275e8 0%, #5b4fc6 100%)",
-              boxShadow: "0 10px 26px rgba(108,88,224,0.42)",
+              background: colors.buttonBg,
+              boxShadow: colors.buttonShadow,
+              color: colors.buttonText,
             }}
           >
             {isStarting ? (

@@ -13,7 +13,7 @@ import { useSettings } from "@/lib/settings";
 export default function SheepResultScreen() {
   const [, params] = useRoute("/sheep/:id");
   const [, setLocation] = useLocation();
-  const { t, dateLocale } = useSettings();
+  const { t, dateLocale, isNight } = useSettings();
   const id = params?.id ? parseInt(params.id) : 0;
 
   const { data: sheep, isLoading } = useGetSheep(id, {
@@ -131,11 +131,20 @@ export default function SheepResultScreen() {
       <div className="flex flex-col space-y-3 w-full mt-auto">
         <Button
           onClick={() => setLocation(`/rest/${id}`)}
-          className="w-full py-5 rounded-2xl text-white hover:scale-[1.01] transition-transform duration-500"
-          style={{
-            background: "linear-gradient(135deg, #8275e8 0%, #5b4fc6 100%)",
-            boxShadow: "0 10px 26px rgba(108,88,224,0.35)",
-          }}
+          className="w-full py-5 rounded-2xl hover:scale-[1.01] transition-transform duration-500"
+          style={
+            isNight
+              ? {
+                  background: "linear-gradient(135deg, #8275e8 0%, #5b4fc6 100%)",
+                  boxShadow: "0 10px 26px rgba(108,88,224,0.35)",
+                  color: "#ffffff",
+                }
+              : {
+                  background: "linear-gradient(135deg, #e3b063 0%, #cf9445 100%)",
+                  boxShadow: "0 10px 26px rgba(176,124,51,0.3)",
+                  color: "#3a2a12",
+                }
+          }
         >
           {t.sheepResult.sleepNow}
         </Button>

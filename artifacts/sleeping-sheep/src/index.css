@@ -124,8 +124,8 @@
   --popover-foreground: 30 22% 24%;
   --popover-border: 38 24% 80%;
 
-  --primary: 252 42% 52%;
-  --primary-foreground: 40 42% 96%;
+  --primary: 32 58% 44%;
+  --primary-foreground: 40 42% 97%;
 
   --secondary: 38 30% 85%;
   --secondary-foreground: 30 22% 26%;
@@ -140,7 +140,7 @@
   --accent-foreground: 30 22% 24%;
 
   --input: 38 24% 78%;
-  --ring: 252 42% 52%;
+  --ring: 32 58% 44%;
 
   color-scheme: light;
 }

@@ -6,4 +6,4 @@
 - [Sleeping Sheep i18n & theme](sleeping-sheep-i18n.md) — all UI strings via t.* (3 dicts), all server text via LANG_META; day/night via html classes; architect reviews need includeGitDiff:false here.
 - [Web Speech STT quirks](web-speech-stt-quirks.md) — browser auto-ends recognition; voice UIs need an onend keep-alive loop + bounded start() retries, and a mic-blocked → text-input fallback.
 - [Orval schema naming](orval-naming.md) — response schema names ending in "Response" can collide with orval's generated zod consts; pick distinct names (e.g. SheepReply).
-- [Sleeping Sheep Clerk auth](sleeping-sheep-clerk-auth.md) — cookie-based web auth; basePath/stripBase in lib/base-path.ts (avoid App↔page import cycle); SettingsProvider wraps ClerkProvider; data still global per-user.
+- [Sleeping Sheep Clerk auth](sleeping-sheep-clerk-auth.md) — cookie-based web auth; basePath/stripBase in lib/base-path.ts (avoid App↔page cycle); nullable user_id ownership: signed-in see own rows, anon see ownerless; by-id routes need the owned-session guard.

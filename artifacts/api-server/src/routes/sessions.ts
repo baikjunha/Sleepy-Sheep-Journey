@@ -2,7 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { sessionsTable, transcriptTurnsTable, sheepSpecsTable, sheepTable } from "@workspace/db";
 import { openai, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, isNull } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
 import {
   GetSessionParams,
   UpdateSessionParams,
@@ -95,10 +96,32 @@ function parseJsonSafe(raw: string): Record<string, unknown> {
   }
 }
 
+// 로그인 사용자는 자기 데이터만, 비로그인 사용자는 소유자 없는(익명) 데이터만 본다.
+function currentUserId(req: Request): string | null {
+  return getAuth(req).userId ?? null;
+}
+
+// 세션 소유권 확인: 소유자가 다르면 404와 동일하게 처리한다 (ID 추측 방지).
+async function loadOwnedSession(
+  req: Request,
+  sessionId: number,
+): Promise<typeof sessionsTable.$inferSelect | null> {
+  const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId));
+  if (!session) return null;
+  if ((session.userId ?? null) !== currentUserId(req)) return null;
+  return session;
+}
+
 // GET /api/sessions
 router.get("/sessions", async (req: Request, res: Response): Promise<void> => {
   try {
-    const sessions = await db.select().from(sessionsTable).orderBy(asc(sessionsTable.createdAt));
+    const userId = currentUserId(req);
+    const ownership = userId ? eq(sessionsTable.userId, userId) : isNull(sessionsTable.userId);
+    const sessions = await db
+      .select()
+      .from(sessionsTable)
+      .where(ownership)
+      .orderBy(asc(sessionsTable.createdAt));
     res.json(sessions);
   } catch (err) {
     req.log.error({ err }, "Failed to list sessions");
@@ -109,9 +132,10 @@ router.get("/sessions", async (req: Request, res: Response): Promise<void> => {
 // POST /api/sessions
 router.post("/sessions", async (req: Request, res: Response): Promise<void> => {
   try {
+    const userId = currentUserId(req);
     const [session] = await db
       .insert(sessionsTable)
-      .values({ status: "active", currentStep: "idle", sleepFallbackTriggered: false })
+      .values({ userId, status: "active", currentStep: "idle", sleepFallbackTriggered: false })
       .returning();
     res.status(201).json(session);
   } catch (err) {
@@ -128,10 +152,7 @@ router.get("/sessions/:id", async (req: Request, res: Response): Promise<void> =
     return;
   }
   try {
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .where(eq(sessionsTable.id, parsed.data.id));
+    const session = await loadOwnedSession(req, parsed.data.id);
     if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
@@ -161,6 +182,12 @@ router.patch("/sessions/:id", async (req: Request, res: Response): Promise<void>
     return;
   }
   try {
+    const owned = await loadOwnedSession(req, paramsParsed.data.id);
+    if (!owned) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
     const updateData: Record<string, unknown> = {};
     if (bodyParsed.data.status !== undefined) updateData.status = bodyParsed.data.status;
     if (bodyParsed.data.currentStep !== undefined) updateData.currentStep = bodyParsed.data.currentStep;
@@ -198,6 +225,12 @@ router.post("/sessions/:id/complete", async (req: Request, res: Response): Promi
     return;
   }
   try {
+    const owned = await loadOwnedSession(req, paramsParsed.data.id);
+    if (!owned) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
     const [session] = await db
       .update(sessionsTable)
       .set({
@@ -228,6 +261,12 @@ router.get("/sessions/:id/transcripts", async (req: Request, res: Response): Pro
     return;
   }
   try {
+    const owned = await loadOwnedSession(req, parsed.data.id);
+    if (!owned) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
     const transcripts = await db
       .select()
       .from(transcriptTurnsTable)
@@ -253,6 +292,12 @@ router.post("/sessions/:id/transcripts", async (req: Request, res: Response): Pr
     return;
   }
   try {
+    const owned = await loadOwnedSession(req, paramsParsed.data.id);
+    if (!owned) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
     const [turn] = await db
       .insert(transcriptTurnsTable)
       .values({
@@ -285,6 +330,12 @@ router.post("/sessions/:id/converse", async (req: Request, res: Response): Promi
   }
 
   try {
+    const owned = await loadOwnedSession(req, paramsParsed.data.id);
+    if (!owned) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+
     const { userText, userTurnCount, contextTurns } = bodyParsed.data;
     const language: Language = bodyParsed.data.language ?? "ko";
     const meta = LANG_META[language];
@@ -480,6 +531,7 @@ async function runGenerateSheep(
     const [sheep] = await db
       .insert(sheepTable)
       .values({
+        userId: session.userId,
         sessionId,
         specId: spec.id,
         name: meta.sheepName(sessionId),
@@ -513,12 +565,8 @@ router.post("/sessions/:id/generate-sheep", async (req: Request, res: Response):
   }
   const language: Language = bodyParsed.data.language ?? "ko";
 
-  // Check session exists first
-  const [session] = await db
-    .select()
-    .from(sessionsTable)
-    .where(eq(sessionsTable.id, sessionId));
-
+  // Check session exists and belongs to the requester
+  const session = await loadOwnedSession(req, sessionId);
   if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
@@ -641,6 +689,11 @@ async function runRegenerateAllSheep(log: import("pino").Logger): Promise<void> 
 
 // POST /api/sheep/regenerate-all — 모아둔 모든 양을 새 감정-시각 프레임워크로 다시 생성
 router.post("/sheep/regenerate-all", async (req: Request, res: Response): Promise<void> => {
+  // 관리용 엔드포인트: 프로덕션에서는 노출하지 않는다 (고비용 일괄 작업 남용 방지).
+  if (process.env.NODE_ENV === "production") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   if (isRegeneratingAll) {
     res.status(409).json({ status: "already_running" });
     return;
@@ -654,7 +707,13 @@ router.post("/sheep/regenerate-all", async (req: Request, res: Response): Promis
 // GET /api/sheep
 router.get("/sheep", async (req: Request, res: Response): Promise<void> => {
   try {
-    const sheep = await db.select().from(sheepTable).orderBy(asc(sheepTable.createdAt));
+    const userId = currentUserId(req);
+    const ownership = userId ? eq(sheepTable.userId, userId) : isNull(sheepTable.userId);
+    const sheep = await db
+      .select()
+      .from(sheepTable)
+      .where(ownership)
+      .orderBy(asc(sheepTable.createdAt));
     res.json(sheep);
   } catch (err) {
     req.log.error({ err }, "Failed to list sheep");
@@ -672,6 +731,13 @@ router.get("/sheep/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const [sheep] = await db.select().from(sheepTable).where(eq(sheepTable.id, id));
     if (!sheep) {
+      res.status(404).json({ error: "Sheep not found" });
+      return;
+    }
+
+    // 다른 사용자의 양은 보이지 않게 한다 (익명 양은 누구나 열람 가능).
+    const userId = currentUserId(req);
+    if (sheep.userId && sheep.userId !== userId) {
       res.status(404).json({ error: "Sheep not found" });
       return;
     }

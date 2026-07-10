@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const sheepTable = pgTable("sheep", {
   id: serial("id").primaryKey(),
+  userId: text("user_id"),
   sessionId: integer("session_id").notNull(),
   specId: integer("spec_id"),
   name: text("name").notNull(),

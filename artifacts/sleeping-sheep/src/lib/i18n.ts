@@ -111,6 +111,15 @@ export interface Translation {
     themeHintNight: string;
     themeHintDay: string;
   };
+  auth: {
+    signIn: string;
+    signOut: string;
+    signInTitle: string;
+    signInSubtitle: string;
+    signUpTitle: string;
+    signUpSubtitle: string;
+    backHome: string;
+  };
 }
 
 export const translations: Record<Language, Translation> = {
@@ -209,6 +218,15 @@ export const translations: Record<Language, Translation> = {
       themeHintNight: "깊은 밤하늘 아래에서",
       themeHintDay: "포근한 베이지빛 아래에서",
     },
+    auth: {
+      signIn: "로그인",
+      signOut: "로그아웃",
+      signInTitle: "다시 만나서 반가워요",
+      signInSubtitle: "포근한 밤을 이어가요",
+      signUpTitle: "처음 오셨네요",
+      signUpSubtitle: "나만의 양떼를 만들어보세요",
+      backHome: "홈으로 돌아가기",
+    },
   },
   en: {
     home: {
@@ -295,6 +313,15 @@ export const translations: Record<Language, Translation> = {
       empty: "No conversation was shared.",
       notFound: "Sheep not found.",
       goHome: "Back to home",
+    },
+    auth: {
+      signIn: "Sign in",
+      signOut: "Sign out",
+      signInTitle: "Welcome back",
+      signInSubtitle: "Let's continue your cozy nights",
+      signUpTitle: "First time here",
+      signUpSubtitle: "Start building your own flock",
+      backHome: "Back to home",
     },
     settings: {
       title: "Settings",
@@ -391,6 +418,15 @@ export const translations: Record<Language, Translation> = {
       empty: "没有聊天记录。",
       notFound: "找不到这只小羊。",
       goHome: "返回首页",
+    },
+    auth: {
+      signIn: "登录",
+      signOut: "退出登录",
+      signInTitle: "欢迎回来",
+      signInSubtitle: "继续温暖的夜晚",
+      signUpTitle: "初次见面",
+      signUpSubtitle: "开始收集属于你的羊群",
+      backHome: "回到首页",
     },
     settings: {
       title: "设置",

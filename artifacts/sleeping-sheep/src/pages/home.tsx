@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useCreateSession } from "@workspace/api-client-react";
-import { Loader2, Moon, History, Settings } from "lucide-react";
+import { Loader2, Moon, History, Settings, LogIn, LogOut } from "lucide-react";
+import { Show, useClerk, useUser } from "@clerk/react";
 import { useSettings } from "@/lib/settings";
+import { basePath } from "@/lib/base-path";
 
 const HOME_STARS = [
   { size: 2, top: 8, left: 13, delay: 0 },
@@ -22,6 +24,8 @@ export default function Home() {
   const createSession = useCreateSession();
   const [isStarting, setIsStarting] = useState(false);
   const { t, isNight } = useSettings();
+  const { signOut } = useClerk();
+  const { user } = useUser();
 
   const handleStart = () => {
     setIsStarting(true);
@@ -94,15 +98,47 @@ export default function Home() {
           />
         ))}
 
-      {/* Settings button */}
-      <button
-        onClick={() => setLocation("/settings")}
-        className="absolute top-5 right-5 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:rotate-45"
-        style={{ color: colors.gear, background: colors.gearBg }}
-        aria-label={t.settings.title}
-      >
-        <Settings className="w-[19px] h-[19px]" />
-      </button>
+      {/* Top-right controls: auth + settings */}
+      <div className="absolute top-5 right-5 z-20 flex items-center gap-2.5">
+        <Show when="signed-out">
+          <button
+            onClick={() => setLocation("/sign-in")}
+            data-testid="button-sign-in"
+            className="h-10 px-4 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition-colors duration-300"
+            style={{ color: colors.chipColor, background: colors.chipBg }}
+          >
+            <LogIn className="w-[15px] h-[15px]" />
+            {t.auth.signIn}
+          </button>
+        </Show>
+        <Show when="signed-in">
+          <div
+            className="h-10 pl-4 pr-1.5 rounded-full flex items-center gap-2 text-[13px] font-light"
+            style={{ color: colors.chipColor, background: colors.chipBg }}
+          >
+            <span data-testid="text-user-name" className="max-w-[120px] truncate">
+              {user?.firstName || user?.primaryEmailAddress?.emailAddress || ""}
+            </span>
+            <button
+              onClick={() => signOut({ redirectUrl: basePath || "/" })}
+              data-testid="button-sign-out"
+              aria-label={t.auth.signOut}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-300"
+              style={{ color: colors.gear, background: colors.gearBg }}
+            >
+              <LogOut className="w-[13px] h-[13px]" />
+            </button>
+          </div>
+        </Show>
+        <button
+          onClick={() => setLocation("/settings")}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:rotate-45"
+          style={{ color: colors.gear, background: colors.gearBg }}
+          aria-label={t.settings.title}
+        >
+          <Settings className="w-[19px] h-[19px]" />
+        </button>
+      </div>
 
       {/* Centered content column */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm flex-1 text-center">

@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type EmpathyInputLanguage =
-  (typeof EmpathyInputLanguage)[keyof typeof EmpathyInputLanguage];
+export type ConverseInputLanguage =
+  (typeof ConverseInputLanguage)[keyof typeof ConverseInputLanguage];
 
-export const EmpathyInputLanguage = {
+export const ConverseInputLanguage = {
   ko: "ko",
   en: "en",
   zh: "zh",

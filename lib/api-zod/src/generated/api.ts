@@ -154,15 +154,15 @@ export const SaveTranscriptTurnBody = zod.object({
 });
 
 /**
- * @summary Generate empathy text for a step using LLM
+ * @summary Generate the sheep's next free-flow conversation reply using LLM
  */
-export const GenerateEmpathyParams = zod.object({
+export const ConverseParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GenerateEmpathyBody = zod.object({
-  step: zod.string(),
+export const ConverseBody = zod.object({
   userText: zod.string(),
+  userTurnCount: zod.number(),
   language: zod.enum(["ko", "en", "zh"]).optional(),
   contextTurns: zod
     .array(
@@ -174,12 +174,9 @@ export const GenerateEmpathyBody = zod.object({
     .optional(),
 });
 
-export const GenerateEmpathyResponse = zod.object({
+export const ConverseResponse = zod.object({
   text: zod.string(),
-  hasProblem: zod.boolean().nullish(),
-  hasAchievement: zod.boolean().nullish(),
-  isAmbiguous: zod.boolean().nullish(),
-  colorTexture: zod.string().nullish(),
+  shouldEnd: zod.boolean(),
 });
 
 /**

@@ -5,3 +5,4 @@
 - [Prod data seeding](sleeping-sheep-prod-seed.md) — prod DB is separate & agent-read-only; sheep data ships via seed JSON + seed-on-empty at server startup; republish to apply.
 - [Sleeping Sheep i18n & theme](sleeping-sheep-i18n.md) — all UI strings via t.* (3 dicts), all server text via LANG_META; day/night via html classes; architect reviews need includeGitDiff:false here.
 - [Web Speech STT quirks](web-speech-stt-quirks.md) — browser auto-ends recognition; voice UIs need an onend keep-alive loop + bounded start() retries, and a mic-blocked → text-input fallback.
+- [Orval schema naming](orval-naming.md) — response schema names ending in "Response" can collide with orval's generated zod consts; pick distinct names (e.g. SheepReply).

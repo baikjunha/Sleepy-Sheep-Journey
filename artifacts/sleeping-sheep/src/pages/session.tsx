@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import {
-  useGenerateEmpathy,
+  useConverse,
   useSaveTranscriptTurn,
   useUpdateSession,
   useCompleteSession,
@@ -12,31 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, MicOff, Send, MessageSquare } from "lucide-react";
 
-type SessionState =
-  | "idle"
-  | "step_1_opening"
-  | "step_2_cognitive_dump"
-  | "step_3_control_classification"
-  | "step_4_small_achievement"
-  | "step_5_emotional_lightening"
-  | "step_5_5_sheep_seed"
-  | "step_6_sleep_transition"
-  | "generating_sheep";
-
-const STEP_ORDER = [
-  "step_1_opening",
-  "step_2_cognitive_dump",
-  "step_3_control_classification",
-  "step_4_small_achievement",
-  "step_5_emotional_lightening",
-  "step_5_5_sheep_seed",
-  "step_6_sleep_transition",
-];
-
-const getStepNumber = (state: string) => {
-  const index = STEP_ORDER.indexOf(state);
-  return index >= 0 ? index + 1 : 1;
-};
+type SessionState = "idle" | "conversing" | "generating_sheep";
 
 // Generated once at module scope so star positions stay fixed across re-renders
 // (the session re-renders constantly during speech; regenerating would make them jump).
@@ -129,9 +105,9 @@ export default function SessionScreen() {
   const [contextTurns, setContextTurns] = useState<{ role: string; text: string }[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const hasProblemRef = useRef<boolean>(false);
+  const userTurnCountRef = useRef<number>(0);
 
-  const generateEmpathy = useGenerateEmpathy();
+  const converse = useConverse();
   const saveTranscriptTurn = useSaveTranscriptTurn();
   const updateSession = useUpdateSession();
   const completeSession = useCompleteSession();
@@ -157,7 +133,7 @@ export default function SessionScreen() {
       return;
     }
     setSessionId(parseInt(idStr));
-    setCurrentState("step_1_opening");
+    setCurrentState("conversing");
   }, [setLocation]);
 
   const startNoInputTimer = useCallback(
@@ -224,91 +200,40 @@ export default function SessionScreen() {
       setTextValue("");
 
       const cleanText = text.trim();
+      const history = contextTurns.slice(-16);
       setContextTurns((prev) => [...prev, { role: "user", text: cleanText }]);
-
-      const stepKey = state.replace("_opening", "").replace("_cognitive_dump", "").replace("_control_classification", "").replace("_small_achievement", "").replace("_emotional_lightening", "").replace("_sheep_seed", "").replace("_sleep_transition", "");
-
-      await saveTranscriptTurn.mutateAsync({
-        id: sid,
-        data: { role: "user", step: state, text: cleanText },
-      });
+      userTurnCountRef.current += 1;
 
       try {
-        if (state === "step_1_opening") {
-          const res = await generateEmpathy.mutateAsync({
-            id: sid,
-            data: { step: "step_2", userText: cleanText, language },
-          });
-          hasProblemRef.current = res.hasProblem ?? false;
+        await saveTranscriptTurn.mutateAsync({
+          id: sid,
+          data: { role: "user", step: "free", text: cleanText },
+        });
 
-          const msg = (res.text || "") + t.session.step2Q;
-          setCurrentState("step_2_cognitive_dump");
-          updateSession.mutate({ id: sid, data: { currentStep: "step_2_cognitive_dump" } });
-          handleSheepSpeak(msg, "step_2", sid, () => beginListening(sid));
-        } else if (state === "step_2_cognitive_dump") {
-          if (hasProblemRef.current) {
-            const res = await generateEmpathy.mutateAsync({
-              id: sid,
-              data: { step: "step_3", userText: cleanText, language },
-            });
-            const msg = (res.text || "") + t.session.step3Q;
-            setCurrentState("step_3_control_classification");
-            updateSession.mutate({ id: sid, data: { currentStep: "step_3_control_classification" } });
-            handleSheepSpeak(msg, "step_3", sid, () => beginListening(sid));
-          } else {
-            const res = await generateEmpathy.mutateAsync({
-              id: sid,
-              data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-4), language },
-            });
-            const msg = (res.text || "") + t.session.step4Q;
-            setCurrentState("step_4_small_achievement");
-            updateSession.mutate({ id: sid, data: { currentStep: "step_4_small_achievement" } });
-            handleSheepSpeak(msg, "step_4", sid, () => beginListening(sid));
-          }
-        } else if (state === "step_3_control_classification") {
-          const res = await generateEmpathy.mutateAsync({
-            id: sid,
-            data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-6), language },
-          });
-          const msg = (res.text || "") + t.session.step4Q;
-          setCurrentState("step_4_small_achievement");
-          updateSession.mutate({ id: sid, data: { currentStep: "step_4_small_achievement" } });
-          handleSheepSpeak(msg, "step_4", sid, () => beginListening(sid));
-        } else if (state === "step_4_small_achievement") {
-          const res = await generateEmpathy.mutateAsync({
-            id: sid,
-            data: { step: "step_5", userText: cleanText, language },
-          });
-          const msg = (res.text || "") + t.session.step5Q;
-          setCurrentState("step_5_emotional_lightening");
-          updateSession.mutate({ id: sid, data: { currentStep: "step_5_emotional_lightening" } });
-          handleSheepSpeak(msg, "step_5", sid, () => beginListening(sid));
-        } else if (state === "step_5_emotional_lightening") {
-          const res = await generateEmpathy.mutateAsync({
-            id: sid,
-            data: { step: "step_5_5", userText: cleanText, language },
-          });
-          const msg = (res.text || "") + t.session.step5_5Q;
-          setCurrentState("step_5_5_sheep_seed");
-          updateSession.mutate({ id: sid, data: { currentStep: "step_5_5_sheep_seed" } });
-          handleSheepSpeak(msg, "step_5_5", sid, () => beginListening(sid));
-        } else if (state === "step_5_5_sheep_seed") {
-          const res = await generateEmpathy.mutateAsync({
-            id: sid,
-            data: { step: "step_6", userText: cleanText, language },
-          });
-          const msg = res.text || t.session.step6Default;
-          setCurrentState("step_6_sleep_transition");
-          updateSession.mutate({ id: sid, data: { currentStep: "step_6_sleep_transition" } });
-          handleSheepSpeak(msg, "step_6", sid, () => {
+        const res = await converse.mutateAsync({
+          id: sid,
+          data: {
+            userText: cleanText,
+            userTurnCount: userTurnCountRef.current,
+            contextTurns: history,
+            language,
+          },
+        });
+
+        const msg = res.text || t.session.fallbackGoodnight;
+
+        if (res.shouldEnd) {
+          await handleSheepSpeak(msg, "free", sid, () => {
             setCurrentState("generating_sheep");
             completeSession.mutateAsync({ id: sid, data: { status: "completed" } }).then(() => {
               setLocation("/sleep");
             });
           });
+        } else {
+          await handleSheepSpeak(msg, "free", sid, () => beginListening(sid));
         }
       } catch (e) {
-        console.error("API error in step", state, e);
+        console.error("API error in conversation", e);
         handleFallback(sid);
       } finally {
         setIsProcessing(false);
@@ -320,8 +245,7 @@ export default function SessionScreen() {
       clearTimers,
       stopListening,
       saveTranscriptTurn,
-      generateEmpathy,
-      updateSession,
+      converse,
       completeSession,
       contextTurns,
       handleSheepSpeak,
@@ -334,13 +258,13 @@ export default function SessionScreen() {
   );
 
   useEffect(() => {
-    if (currentState === "step_1_opening" && sessionId && !hasStarted.current) {
+    if (currentState === "conversing" && sessionId && !hasStarted.current) {
       hasStarted.current = true;
       const msg = t.session.opening;
       setSheepText(msg);
       saveTranscriptTurn.mutateAsync({
         id: sessionId,
-        data: { role: "sheep", step: "step_1", text: msg },
+        data: { role: "sheep", step: "free", text: msg },
       }).then(() => {
         setContextTurns([{ role: "sheep", text: msg }]);
         speak(msg, () => beginListening(sessionId));
@@ -375,6 +299,8 @@ export default function SessionScreen() {
   // While typing, the 18s "fell asleep" fallback shouldn't end the session.
   const handleToggleTextInput = () => {
     setIsTextInput((v) => {
+      // Mic unusable: voice mode would be a dead end, so stay in text mode.
+      if (micBlocked) return true;
       const next = !v;
       if (next) {
         clearTimers();
@@ -391,9 +317,6 @@ export default function SessionScreen() {
       handleUserSubmit(textValue, sessionId, currentState);
     }
   };
-
-  const currentStepNum = getStepNumber(currentState);
-  const totalSteps = 6;
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center relative overflow-hidden">
@@ -417,28 +340,8 @@ export default function SessionScreen() {
         />
       ))}
 
-      {/* Top bar: step indicator + input toggle */}
-      <div className="w-full px-6 pt-8 flex items-center justify-between z-20 relative">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5 items-center">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div
-                key={i}
-                data-testid={`step-indicator-${i}`}
-                className={`rounded-full transition-all duration-700 ${
-                  i < currentStepNum
-                    ? "w-6 h-1 bg-primary/50"
-                    : i === currentStepNum
-                      ? "w-4 h-1 bg-muted-foreground/20"
-                      : "w-2 h-1 bg-muted/30"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-[10px] text-muted-foreground/25 font-sans font-light tracking-wider">
-            {currentStepNum} / {totalSteps}
-          </span>
-        </div>
+      {/* Top bar: input toggle */}
+      <div className="w-full px-6 pt-8 flex items-center justify-end z-20 relative">
         <Button
           variant="ghost"
           size="sm"

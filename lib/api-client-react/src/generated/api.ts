@@ -19,8 +19,7 @@ import type {
 import type {
   ApiError,
   CompleteSessionInput,
-  EmpathyInput,
-  EmpathyResponse,
+  ConverseInput,
   GenerateSheepInput,
   HealthStatus,
   Session,
@@ -28,6 +27,7 @@ import type {
   SessionUpdate,
   SessionWithTranscripts,
   Sheep,
+  SheepReply,
   SheepWithSpec,
   TranscriptTurn,
   TranscriptTurnInput,
@@ -715,43 +715,43 @@ export const useSaveTranscriptTurn = <
 };
 
 /**
- * @summary Generate empathy text for a step using LLM
+ * @summary Generate the sheep's next free-flow conversation reply using LLM
  */
-export const getGenerateEmpathyUrl = (id: number) => {
-  return `/api/sessions/${id}/generate-empathy`;
+export const getConverseUrl = (id: number) => {
+  return `/api/sessions/${id}/converse`;
 };
 
-export const generateEmpathy = async (
+export const converse = async (
   id: number,
-  empathyInput: EmpathyInput,
+  converseInput: ConverseInput,
   options?: RequestInit,
-): Promise<EmpathyResponse> => {
-  return customFetch<EmpathyResponse>(getGenerateEmpathyUrl(id), {
+): Promise<SheepReply> => {
+  return customFetch<SheepReply>(getConverseUrl(id), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(empathyInput),
+    body: JSON.stringify(converseInput),
   });
 };
 
-export const getGenerateEmpathyMutationOptions = <
+export const getConverseMutationOptions = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof generateEmpathy>>,
+    Awaited<ReturnType<typeof converse>>,
     TError,
-    { id: number; data: BodyType<EmpathyInput> },
+    { id: number; data: BodyType<ConverseInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof generateEmpathy>>,
+  Awaited<ReturnType<typeof converse>>,
   TError,
-  { id: number; data: BodyType<EmpathyInput> },
+  { id: number; data: BodyType<ConverseInput> },
   TContext
 > => {
-  const mutationKey = ["generateEmpathy"];
+  const mutationKey = ["converse"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -761,44 +761,44 @@ export const getGenerateEmpathyMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof generateEmpathy>>,
-    { id: number; data: BodyType<EmpathyInput> }
+    Awaited<ReturnType<typeof converse>>,
+    { id: number; data: BodyType<ConverseInput> }
   > = (props) => {
     const { id, data } = props ?? {};
 
-    return generateEmpathy(id, data, requestOptions);
+    return converse(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type GenerateEmpathyMutationResult = NonNullable<
-  Awaited<ReturnType<typeof generateEmpathy>>
+export type ConverseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof converse>>
 >;
-export type GenerateEmpathyMutationBody = BodyType<EmpathyInput>;
-export type GenerateEmpathyMutationError = ErrorType<unknown>;
+export type ConverseMutationBody = BodyType<ConverseInput>;
+export type ConverseMutationError = ErrorType<unknown>;
 
 /**
- * @summary Generate empathy text for a step using LLM
+ * @summary Generate the sheep's next free-flow conversation reply using LLM
  */
-export const useGenerateEmpathy = <
+export const useConverse = <
   TError = ErrorType<unknown>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof generateEmpathy>>,
+    Awaited<ReturnType<typeof converse>>,
     TError,
-    { id: number; data: BodyType<EmpathyInput> },
+    { id: number; data: BodyType<ConverseInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof generateEmpathy>>,
+  Awaited<ReturnType<typeof converse>>,
   TError,
-  { id: number; data: BodyType<EmpathyInput> },
+  { id: number; data: BodyType<ConverseInput> },
   TContext
 > => {
-  return useMutation(getGenerateEmpathyMutationOptions(options));
+  return useMutation(getConverseMutationOptions(options));
 };
 
 /**

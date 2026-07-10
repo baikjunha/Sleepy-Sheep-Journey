@@ -12,8 +12,8 @@ import {
   ListTranscriptsParams,
   SaveTranscriptTurnParams,
   SaveTranscriptTurnBody,
-  GenerateEmpathyParams,
-  GenerateEmpathyBody,
+  ConverseParams,
+  ConverseBody,
   GenerateSheepParams,
   GenerateSheepBody,
 } from "@workspace/api-zod";
@@ -26,10 +26,6 @@ const LANG_META: Record<
   Language,
   {
     name: string;
-    step2End: string;
-    step4End: string;
-    step5None: string;
-    step6End: string;
     sheepName: (id: number) => string;
     defaultEmotionSummary: string;
     defaultEmotion: string;
@@ -43,10 +39,6 @@ const LANG_META: Record<
 > = {
   ko: {
     name: "한국어",
-    step2End: "오늘 하루도 고생 많으셨습니다.",
-    step4End: "공유해 주셔서 감사합니다.",
-    step5None: "매일 무언가를 이뤄낸다는 건 어려운 일이에요. 괜찮습니다.",
-    step6End: "이제 수면 모드로 전환하겠습니다. 오늘 하루도 고생하셨어요.",
     sheepName: (id) => `오늘의 양 #${id}`,
     defaultEmotionSummary: "오늘 하루의 감정이 담긴 양.",
     defaultEmotion: "평온",
@@ -59,10 +51,6 @@ const LANG_META: Record<
   },
   en: {
     name: "English",
-    step2End: "You did well today.",
-    step4End: "Thank you for sharing.",
-    step5None: "It's hard to achieve something every single day. That's okay.",
-    step6End: "Let's slip into sleep mode now. You did well today.",
     sheepName: (id) => `Tonight's Sheep #${id}`,
     defaultEmotionSummary: "A sheep holding today's feelings.",
     defaultEmotion: "Peace",
@@ -75,10 +63,6 @@ const LANG_META: Record<
   },
   zh: {
     name: "简体中文",
-    step2End: "今天也辛苦了。",
-    step4End: "谢谢你的分享。",
-    step5None: "并不是每天都要有所成就，没关系的。",
-    step6End: "现在让我们进入睡眠模式。今天也辛苦了。",
     sheepName: (id) => `今晚的羊 #${id}`,
     defaultEmotionSummary: "装着今天心情的羊。",
     defaultEmotion: "平静",
@@ -220,7 +204,7 @@ router.post("/sessions/:id/complete", async (req: Request, res: Response): Promi
         status: bodyParsed.data.status,
         endedAt: new Date(),
         sleepFallbackTriggered: bodyParsed.data.sleepFallbackTriggered ?? false,
-        currentStep: "step_6_sleep_transition",
+        currentStep: "completed",
       })
       .where(eq(sessionsTable.id, paramsParsed.data.id))
       .returning();
@@ -287,23 +271,40 @@ router.post("/sessions/:id/transcripts", async (req: Request, res: Response): Pr
   }
 });
 
-// POST /api/sessions/:id/generate-empathy
-router.post("/sessions/:id/generate-empathy", async (req: Request, res: Response): Promise<void> => {
-  const paramsParsed = GenerateEmpathyParams.safeParse({ id: Number(req.params.id) });
+// POST /api/sessions/:id/converse — 자유 흐름 취침 전 대화
+router.post("/sessions/:id/converse", async (req: Request, res: Response): Promise<void> => {
+  const paramsParsed = ConverseParams.safeParse({ id: Number(req.params.id) });
   if (!paramsParsed.success) {
     res.status(400).json({ error: "Invalid session id" });
     return;
   }
-  const bodyParsed = GenerateEmpathyBody.safeParse(req.body);
+  const bodyParsed = ConverseBody.safeParse(req.body);
   if (!bodyParsed.success) {
     res.status(400).json({ error: "Invalid body" });
     return;
   }
 
   try {
-    const { step, userText, contextTurns } = bodyParsed.data;
+    const { userText, userTurnCount, contextTurns } = bodyParsed.data;
     const language: Language = bodyParsed.data.language ?? "ko";
     const meta = LANG_META[language];
+
+    // 대화 후반으로 갈수록 질문을 줄이고 이완 안내로 전환한다.
+    const forceEnd = userTurnCount >= 8;
+    let phaseGuide: string;
+    if (forceEnd) {
+      phaseGuide =
+        "대화가 충분히 길어졌습니다. 이번 응답에서 반드시 shouldEnd를 true로 하고, 대답을 요구하지 않는 부드러운 마무리 인사로 대화를 닫으세요.";
+    } else if (userTurnCount <= 2) {
+      phaseGuide =
+        "지금은 대화 초반입니다. 사용자의 말을 부드럽게 받아주고, 오늘 하루에 대한 가벼운 질문을 하나만 곁들이세요.";
+    } else if (userTurnCount <= 4) {
+      phaseGuide =
+        "지금은 대화 중반입니다. 질문을 점차 줄이고, 사용자의 말을 짧게 받아주며 편안한 심상(따뜻한 이불, 잔잔한 빗소리 등)을 곁들이세요. 질문 없이 문장을 닫아도 좋습니다.";
+    } else {
+      phaseGuide =
+        "지금은 대화 후반입니다. 질문을 완전히 멈추고, 호흡이나 몸의 이완을 안내하는 짧은 문장만 건네세요. 사용자의 답이 짧아지거나 느려졌다면 잠들고 있다는 신호로 보고, shouldEnd를 true로 하여 대답을 요구하지 않는 마무리 인사로 대화를 닫으세요.";
+    }
 
     const systemPrompt = `당신은 사용자가 잠들 수 있도록 돕는 취침 전 대화 상대입니다.
 
@@ -324,87 +325,38 @@ router.post("/sessions/:id/generate-empathy", async (req: Request, res: Response
 - 사용자가 계속 대화하기를 원해도 각성시키는 방향으로는 응하지 않습니다.
 - 심각한 정서적 위기가 감지되면 차분하게 전문적인 도움을 권합니다.
 
+[현재 단계]
+${phaseGuide}
+
 [출력 형식]
-- 항상 요청된 JSON 형식으로만 응답하세요.
+- 반드시 아래 JSON 형식으로만 응답하세요. 마크다운 코드블록 없이 순수 JSON으로만 응답하세요.
+{"text": "다음 응답 문장", "shouldEnd": false}
+- shouldEnd는 이번 응답으로 대화를 마치고 사용자를 수면 모드로 보낼 때만 true로 하세요. true일 때 text는 대답을 요구하지 않는 마무리 인사여야 합니다.
 - 모든 응답 문장("text" 값)은 반드시 ${meta.name}(으)로 작성하세요.`;
 
-    let userPrompt = "";
-
-    if (step === "step_2") {
-      userPrompt = `사용자가 오늘 하루에 대해 말했습니다: "${userText}"
-
-다음을 생성하세요:
-1. 사용자 답변에 대한 1-2문장 짧은 공감 ("${meta.step2End}"로 마무리)
-2. 이 답변이 "해결 못한 문제가 있다"는 뜻인지, "없다/애매하다"는 뜻인지 판단
-
-JSON으로 응답하세요:
-{
-  "text": "공감 문장. ${meta.step2End}",
-  "hasProblem": true,
-  "isAmbiguous": false
-}`;
-    } else if (step === "step_3") {
-      userPrompt = `사용자가 고민에 대해 말했습니다: "${userText}"
-
-이 고민을 간결하게 요약하고 짧게 공감하는 1-2문장을 만들어주세요.
-JSON으로 응답하세요:
-{
-  "text": "요약 및 공감 문장."
-}`;
-    } else if (step === "step_4") {
-      const prevContext = contextTurns?.map((t) => `${t.role}: ${t.text}`).join("\n") ?? "";
-      userPrompt = `이전 대화:
-${prevContext}
-
-사용자가 성취에 대해 말했습니다: "${userText}"
-
-사용자의 말을 짧게 공감하고 "${meta.step4End}"로 마무리하세요.
-JSON으로 응답하세요:
-{
-  "text": "공감 문장.",
-  "hasAchievement": true
-}`;
-    } else if (step === "step_5") {
-      userPrompt = `사용자가 성취에 대해 말했습니다: "${userText}"
-성취를 간결히 인정하며 긍정적으로 지지하는 1문장을 만들어주세요. 없다고 했으면 "${meta.step5None}"라고 응답하세요.
-JSON으로 응답하세요: { "text": "..." }`;
-    } else if (step === "step_5_5") {
-      userPrompt = `사용자가 웃음 포인트나 상상에 대해 말했습니다: "${userText}"
-이 답변에 짧게 공감하는 1문장을 만들어주세요.
-또한 사용자가 답변에서 색깔이나 촉감을 언급했다면 그것을 추출하고, 없다면 null을 반환하세요.
-JSON으로 응답하세요:
-{
-  "text": "공감 문장.",
-  "colorTexture": "언급된 색/촉감 또는 null"
-}`;
-    } else if (step === "step_6") {
-      userPrompt = `사용자가 양에 입히고 싶은 색깔이나 촉감으로 말했습니다: "${userText}"
-이것을 반영해서 포근하고 따뜻한 마무리 멘트를 만들어주세요. "${meta.step6End}"로 끝내주세요.
-JSON으로 응답하세요:
-{
-  "text": "마무리 멘트. ${meta.step6End}",
-  "colorTexture": "${userText}"
-}`;
-    } else {
-      userPrompt = `사용자가 말했습니다: "${userText}". 짧게 공감해주세요.
-JSON으로 응답하세요: { "text": "공감 문장." }`;
-    }
+    const historyMessages = (contextTurns ?? []).slice(-16).map((turn) => ({
+      role: turn.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: turn.text,
+    }));
 
     const response = await openai.chat.completions.create({
       model: "gpt-5-mini",
       max_completion_tokens: 8192,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        ...historyMessages,
+        { role: "user", content: userText },
       ],
     });
 
     const raw = response.choices[0]?.message?.content || "{}";
     const parsed = parseJsonSafe(raw);
-    res.json(parsed);
+    const text = typeof parsed.text === "string" ? parsed.text : "";
+    const shouldEnd = forceEnd || parsed.shouldEnd === true;
+    res.json({ text, shouldEnd });
   } catch (err) {
-    req.log.error({ err }, "Failed to generate empathy");
-    res.status(500).json({ error: "Failed to generate empathy" });
+    req.log.error({ err }, "Failed to generate conversation reply");
+    res.status(500).json({ error: "Failed to generate conversation reply" });
   }
 });
 

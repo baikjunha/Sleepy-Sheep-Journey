@@ -75,25 +75,25 @@ export interface TranscriptTurnInput {
   isAmbiguous?: boolean;
 }
 
-export type EmpathyInputLanguage =
-  (typeof EmpathyInputLanguage)[keyof typeof EmpathyInputLanguage];
+export type ConverseInputLanguage =
+  (typeof ConverseInputLanguage)[keyof typeof ConverseInputLanguage];
 
-export const EmpathyInputLanguage = {
+export const ConverseInputLanguage = {
   ko: "ko",
   en: "en",
   zh: "zh",
 } as const;
 
-export type EmpathyInputContextTurnsItem = {
+export type ConverseInputContextTurnsItem = {
   role: string;
   text: string;
 };
 
-export interface EmpathyInput {
-  step: string;
+export interface ConverseInput {
   userText: string;
-  language?: EmpathyInputLanguage;
-  contextTurns?: EmpathyInputContextTurnsItem[];
+  userTurnCount: number;
+  language?: ConverseInputLanguage;
+  contextTurns?: ConverseInputContextTurnsItem[];
 }
 
 export type GenerateSheepInputLanguage =
@@ -109,16 +109,9 @@ export interface GenerateSheepInput {
   language?: GenerateSheepInputLanguage;
 }
 
-export interface EmpathyResponse {
+export interface SheepReply {
   text: string;
-  /** @nullable */
-  hasProblem?: boolean | null;
-  /** @nullable */
-  hasAchievement?: boolean | null;
-  /** @nullable */
-  isAmbiguous?: boolean | null;
-  /** @nullable */
-  colorTexture?: string | null;
+  shouldEnd: boolean;
 }
 
 export interface SheepSpec {

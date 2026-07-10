@@ -8,10 +8,9 @@
 
 export * from "./apiError";
 export * from "./completeSessionInput";
-export * from "./empathyInput";
-export * from "./empathyInputContextTurnsItem";
-export * from "./empathyInputLanguage";
-export * from "./empathyResponse";
+export * from "./converseInput";
+export * from "./converseInputContextTurnsItem";
+export * from "./converseInputLanguage";
 export * from "./generateSheepInput";
 export * from "./generateSheepInputLanguage";
 export * from "./healthStatus";
@@ -20,6 +19,7 @@ export * from "./sessionInput";
 export * from "./sessionUpdate";
 export * from "./sessionWithTranscripts";
 export * from "./sheep";
+export * from "./sheepReply";
 export * from "./sheepSpec";
 export * from "./sheepWithSpec";
 export * from "./transcriptTurn";

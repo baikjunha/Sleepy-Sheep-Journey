@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type EmpathyInputContextTurnsItem = {
+export type ConverseInputContextTurnsItem = {
   role: string;
   text: string;
 };

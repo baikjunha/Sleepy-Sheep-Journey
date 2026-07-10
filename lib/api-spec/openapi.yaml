@@ -192,11 +192,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/TranscriptTurn"
 
-  /sessions/{id}/generate-empathy:
+  /sessions/{id}/converse:
     post:
-      operationId: generateEmpathy
+      operationId: converse
       tags: [sessions]
-      summary: Generate empathy text for a step using LLM
+      summary: Generate the sheep's next free-flow conversation reply using LLM
       parameters:
         - name: id
           in: path
@@ -208,14 +208,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/EmpathyInput"
+              $ref: "#/components/schemas/ConverseInput"
       responses:
         "200":
-          description: Generated empathy text
+          description: Generated sheep reply
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/EmpathyResponse"
+                $ref: "#/components/schemas/SheepReply"
 
   /sessions/{id}/generate-sheep:
     post:
@@ -452,13 +452,13 @@ components:
         - step
         - text
 
-    EmpathyInput:
+    ConverseInput:
       type: object
       properties:
-        step:
-          type: string
         userText:
           type: string
+        userTurnCount:
+          type: integer
         language:
           type: string
           enum: [ko, en, zh]
@@ -475,8 +475,8 @@ components:
               - role
               - text
       required:
-        - step
         - userText
+        - userTurnCount
 
     GenerateSheepInput:
       type: object
@@ -485,21 +485,16 @@ components:
           type: string
           enum: [ko, en, zh]
 
-    EmpathyResponse:
+    SheepReply:
       type: object
       properties:
         text:
           type: string
-        hasProblem:
-          type: ["boolean", "null"]
-        hasAchievement:
-          type: ["boolean", "null"]
-        isAmbiguous:
-          type: ["boolean", "null"]
-        colorTexture:
-          type: ["string", "null"]
+        shouldEnd:
+          type: boolean
       required:
         - text
+        - shouldEnd
 
     SheepSpec:
       type: object

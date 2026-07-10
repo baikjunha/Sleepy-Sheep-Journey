@@ -163,6 +163,7 @@ export const GenerateEmpathyParams = zod.object({
 export const GenerateEmpathyBody = zod.object({
   step: zod.string(),
   userText: zod.string(),
+  language: zod.enum(["ko", "en", "zh"]).optional(),
   contextTurns: zod
     .array(
       zod.object({
@@ -186,6 +187,10 @@ export const GenerateEmpathyResponse = zod.object({
  */
 export const GenerateSheepParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const GenerateSheepBody = zod.object({
+  language: zod.enum(["ko", "en", "zh"]).optional(),
 });
 
 export const GenerateSheepResponse = zod.object({

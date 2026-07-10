@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { EmpathyInputContextTurnsItem } from "./empathyInputContextTurnsItem";
+import type { EmpathyInputLanguage } from "./empathyInputLanguage";
 
 export interface EmpathyInput {
   step: string;
   userText: string;
+  language?: EmpathyInputLanguage;
   contextTurns?: EmpathyInputContextTurnsItem[];
 }

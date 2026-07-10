@@ -7,6 +7,7 @@ import {
   useCompleteSession,
 } from "@workspace/api-client-react";
 import { useSpeech } from "@/hooks/use-speech";
+import { useSettings } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mic, MicOff, Send, MessageSquare } from "lucide-react";
@@ -135,8 +136,10 @@ export default function SessionScreen() {
   const updateSession = useUpdateSession();
   const completeSession = useCompleteSession();
 
+  const { t, language, sttLocale, isNight } = useSettings();
+
   const { speak, isSpeaking, startListening, stopListening, isListening, transcript, interimTranscript, audioLevel, micBlocked } =
-    useSpeech();
+    useSpeech(sttLocale);
 
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noInputTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,7 +185,7 @@ export default function SessionScreen() {
     async (sid: number) => {
       clearTimers();
       stopListening();
-      const msg = "편안한 밤 되세요.";
+      const msg = t.session.fallbackGoodnight;
       setSheepText(msg);
       await updateSession.mutateAsync({
         id: sid,
@@ -195,7 +198,7 @@ export default function SessionScreen() {
         });
       });
     },
-    [clearTimers, stopListening, speak, updateSession, completeSession, setLocation],
+    [clearTimers, stopListening, speak, updateSession, completeSession, setLocation, t],
   );
 
   const beginListening = useCallback(
@@ -234,13 +237,11 @@ export default function SessionScreen() {
         if (state === "step_1_opening") {
           const res = await generateEmpathy.mutateAsync({
             id: sid,
-            data: { step: "step_2", userText: cleanText },
+            data: { step: "step_2", userText: cleanText, language },
           });
           hasProblemRef.current = res.hasProblem ?? false;
 
-          const msg =
-            (res.text || "") +
-            " 머릿속을 가볍게 비우고 잠에 들기 위해, 가장 신경 쓰였지만 해결하지 못한 문제 딱 하나만 편하게 말씀해 주시겠어요. 없으시다면 없다라고 편하게 이야기해 주세요.";
+          const msg = (res.text || "") + t.session.step2Q;
           setCurrentState("step_2_cognitive_dump");
           updateSession.mutate({ id: sid, data: { currentStep: "step_2_cognitive_dump" } });
           handleSheepSpeak(msg, "step_2", sid, () => beginListening(sid));
@@ -248,22 +249,18 @@ export default function SessionScreen() {
           if (hasProblemRef.current) {
             const res = await generateEmpathy.mutateAsync({
               id: sid,
-              data: { step: "step_3", userText: cleanText },
+              data: { step: "step_3", userText: cleanText, language },
             });
-            const msg =
-              (res.text || "") +
-              " 적어주신 그 문제는 지금 당장 해결할 수 있는 일인가요. 만약 당장 해결하기 어렵다면 왜 그런지, 반대로 내일 해결할 수 있다면 내일 아침 가장 먼저 해볼 아주 작은 행동 하나만 알려주세요.";
+            const msg = (res.text || "") + t.session.step3Q;
             setCurrentState("step_3_control_classification");
             updateSession.mutate({ id: sid, data: { currentStep: "step_3_control_classification" } });
             handleSheepSpeak(msg, "step_3", sid, () => beginListening(sid));
           } else {
             const res = await generateEmpathy.mutateAsync({
               id: sid,
-              data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-4) },
+              data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-4), language },
             });
-            const msg =
-              (res.text || "") +
-              " 다음으로는 오늘 스스로에게 잘했다고 칭찬해 주고 싶은 아주 작은 성취가 있다면 하나만 공유해 주세요. 정말 작아도 좋고, 만약 떠오르지 않는다면 없다고 쿨하게 넘어가셔도 좋습니다.";
+            const msg = (res.text || "") + t.session.step4Q;
             setCurrentState("step_4_small_achievement");
             updateSession.mutate({ id: sid, data: { currentStep: "step_4_small_achievement" } });
             handleSheepSpeak(msg, "step_4", sid, () => beginListening(sid));
@@ -271,44 +268,36 @@ export default function SessionScreen() {
         } else if (state === "step_3_control_classification") {
           const res = await generateEmpathy.mutateAsync({
             id: sid,
-            data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-6) },
+            data: { step: "step_4", userText: cleanText, contextTurns: contextTurns.slice(-6), language },
           });
-          const msg =
-            (res.text || "") +
-            " 다음으로는 오늘 스스로에게 잘했다고 칭찬해 주고 싶은 아주 작은 성취가 있다면 하나만 공유해 주세요. 정말 작아도 좋고, 만약 떠오르지 않는다면 없다고 쿨하게 넘어가셔도 좋습니다.";
+          const msg = (res.text || "") + t.session.step4Q;
           setCurrentState("step_4_small_achievement");
           updateSession.mutate({ id: sid, data: { currentStep: "step_4_small_achievement" } });
           handleSheepSpeak(msg, "step_4", sid, () => beginListening(sid));
         } else if (state === "step_4_small_achievement") {
           const res = await generateEmpathy.mutateAsync({
             id: sid,
-            data: { step: "step_5", userText: cleanText },
+            data: { step: "step_5", userText: cleanText, language },
           });
-          const msg =
-            (res.text || "") +
-            " 오늘 하루를 돌아보며 픽 웃음이 났던 순간이 있었나요. 없으셨다면, 어떤 일이 일어났을 때 가장 기분 좋게 웃으실 수 있을지 자유롭게 상상해서 말씀해 주세요.";
+          const msg = (res.text || "") + t.session.step5Q;
           setCurrentState("step_5_emotional_lightening");
           updateSession.mutate({ id: sid, data: { currentStep: "step_5_emotional_lightening" } });
           handleSheepSpeak(msg, "step_5", sid, () => beginListening(sid));
         } else if (state === "step_5_emotional_lightening") {
           const res = await generateEmpathy.mutateAsync({
             id: sid,
-            data: { step: "step_5_5", userText: cleanText },
+            data: { step: "step_5_5", userText: cleanText, language },
           });
-          const msg =
-            (res.text || "") +
-            " 떠올려주신 기억에 기분 좋은 에너지를 담아, 오늘 밤 사용자님을 지켜줄 예쁜 양을 한 마리 만들려고 해요. 이 양에게 가장 입혀주고 싶은 포근한 색깔이나 촉감이 있다면 하나만 골라주시겠어요.";
+          const msg = (res.text || "") + t.session.step5_5Q;
           setCurrentState("step_5_5_sheep_seed");
           updateSession.mutate({ id: sid, data: { currentStep: "step_5_5_sheep_seed" } });
           handleSheepSpeak(msg, "step_5_5", sid, () => beginListening(sid));
         } else if (state === "step_5_5_sheep_seed") {
           const res = await generateEmpathy.mutateAsync({
             id: sid,
-            data: { step: "step_6", userText: cleanText },
+            data: { step: "step_6", userText: cleanText, language },
           });
-          const msg =
-            res.text ||
-            "포근한 양을 만들어드릴게요. 이제 눈을 감고 편안한 밤 되세요.";
+          const msg = res.text || t.session.step6Default;
           setCurrentState("step_6_sleep_transition");
           updateSession.mutate({ id: sid, data: { currentStep: "step_6_sleep_transition" } });
           handleSheepSpeak(msg, "step_6", sid, () => {
@@ -339,13 +328,15 @@ export default function SessionScreen() {
       handleFallback,
       beginListening,
       setLocation,
+      t,
+      language,
     ],
   );
 
   useEffect(() => {
     if (currentState === "step_1_opening" && sessionId && !hasStarted.current) {
       hasStarted.current = true;
-      const msg = "오늘 하루는 어떠셨나요.";
+      const msg = t.session.opening;
       setSheepText(msg);
       saveTranscriptTurn.mutateAsync({
         id: sessionId,
@@ -409,8 +400,8 @@ export default function SessionScreen() {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/8 via-background to-background pointer-events-none" />
 
-      {/* Stars */}
-      {SESSION_STARS.map((star) => (
+      {/* Stars — night only */}
+      {isNight && SESSION_STARS.map((star) => (
         <div
           key={star.id}
           className="star"
@@ -486,8 +477,8 @@ export default function SessionScreen() {
                 value={textValue}
                 onChange={(e) => setTextValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                placeholder="텍스트로 대답하기..."
-                className="bg-white/[0.03] border-white/[0.06] text-foreground placeholder:text-muted-foreground/30 rounded-xl"
+                placeholder={t.session.textPlaceholder}
+                className="bg-foreground/[0.03] border-foreground/[0.08] text-foreground placeholder:text-muted-foreground/30 rounded-xl"
                 autoFocus
                 disabled={isProcessing || isSpeaking}
               />
@@ -496,7 +487,7 @@ export default function SessionScreen() {
                 size="icon"
                 onClick={handleTextSubmit}
                 disabled={!textValue.trim() || isProcessing || isSpeaking}
-                className="bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl"
+                className="bg-foreground/[0.05] hover:bg-foreground/[0.08] border border-foreground/[0.08] rounded-xl"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -509,7 +500,7 @@ export default function SessionScreen() {
                     <Mic className="w-3.5 h-3.5 text-emerald-400/60" />
                   </div>
                   <p className="text-muted-foreground/30 text-[10px] mb-2 tracking-[0.2em] uppercase font-light">
-                    듣고 있어요
+                    {t.session.listening}
                   </p>
                   <p className="text-foreground/50 min-h-[40px] font-light text-sm leading-relaxed">
                     {interimTranscript || transcript}
@@ -518,18 +509,18 @@ export default function SessionScreen() {
               ) : isSpeaking ? (
                 <div className="flex flex-col items-center" data-testid="speaking-state">
                   <p className="text-[10px] text-primary/40 tracking-[0.2em] uppercase font-light">
-                    양이 말하는 중
+                    {t.session.sheepSpeaking}
                   </p>
                 </div>
               ) : isProcessing ? (
                 <div className="flex flex-col items-center" data-testid="processing-state">
                   <div className="w-5 h-5 border border-primary/20 border-t-transparent rounded-full animate-spin mb-2" />
-                  <p className="text-[10px] text-muted-foreground/30 tracking-wider">생각하고 있어요</p>
+                  <p className="text-[10px] text-muted-foreground/30 tracking-wider">{t.session.thinking}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center" data-testid="idle-mic-state">
                   <MicOff className="w-3.5 h-3.5 mb-2 text-muted-foreground/15" />
-                  <p className="text-[10px] text-muted-foreground/15">마이크가 꺼져 있습니다</p>
+                  <p className="text-[10px] text-muted-foreground/15">{t.session.micOff}</p>
                 </div>
               )}
             </div>

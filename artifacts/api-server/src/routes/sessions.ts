@@ -15,9 +15,81 @@ import {
   GenerateEmpathyParams,
   GenerateEmpathyBody,
   GenerateSheepParams,
+  GenerateSheepBody,
 } from "@workspace/api-zod";
 
 const router = Router();
+
+type Language = "ko" | "en" | "zh";
+
+const LANG_META: Record<
+  Language,
+  {
+    name: string;
+    step2End: string;
+    step4End: string;
+    step5None: string;
+    step6End: string;
+    sheepName: (id: number) => string;
+    defaultEmotionSummary: string;
+    defaultEmotion: string;
+    defaultColor: string;
+    defaultTexture: string;
+    defaultShape: string;
+    defaultPattern: string;
+    defaultSymbol: string;
+    defaultPersonality: string;
+  }
+> = {
+  ko: {
+    name: "한국어",
+    step2End: "오늘 하루도 고생 많으셨습니다.",
+    step4End: "공유해 주셔서 감사합니다.",
+    step5None: "매일 무언가를 이뤄낸다는 건 어려운 일이에요. 괜찮습니다.",
+    step6End: "이제 수면 모드로 전환하겠습니다. 오늘 하루도 고생하셨어요.",
+    sheepName: (id) => `오늘의 양 #${id}`,
+    defaultEmotionSummary: "오늘 하루의 감정이 담긴 양.",
+    defaultEmotion: "평온",
+    defaultColor: "따뜻한 크림색",
+    defaultTexture: "부드러운 양털",
+    defaultShape: "둥글고 포근한 형태",
+    defaultPattern: "잔잔한 물결 무늬",
+    defaultSymbol: "작은 달과 별",
+    defaultPersonality: "조용하고 따뜻하게 사용자를 지켜주는 양",
+  },
+  en: {
+    name: "English",
+    step2End: "You did well today.",
+    step4End: "Thank you for sharing.",
+    step5None: "It's hard to achieve something every single day. That's okay.",
+    step6End: "Let's slip into sleep mode now. You did well today.",
+    sheepName: (id) => `Tonight's Sheep #${id}`,
+    defaultEmotionSummary: "A sheep holding today's feelings.",
+    defaultEmotion: "Peace",
+    defaultColor: "Warm cream",
+    defaultTexture: "Soft fluffy wool",
+    defaultShape: "Round and cozy",
+    defaultPattern: "Gentle wave pattern",
+    defaultSymbol: "A small moon and stars",
+    defaultPersonality: "A quiet, warm sheep that watches over you",
+  },
+  zh: {
+    name: "简体中文",
+    step2End: "今天也辛苦了。",
+    step4End: "谢谢你的分享。",
+    step5None: "并不是每天都要有所成就，没关系的。",
+    step6End: "现在让我们进入睡眠模式。今天也辛苦了。",
+    sheepName: (id) => `今晚的羊 #${id}`,
+    defaultEmotionSummary: "装着今天心情的羊。",
+    defaultEmotion: "平静",
+    defaultColor: "温暖的奶油色",
+    defaultTexture: "柔软的羊毛",
+    defaultShape: "圆润温暖的形状",
+    defaultPattern: "轻柔的波浪纹",
+    defaultSymbol: "小月亮和星星",
+    defaultPersonality: "安静而温暖地守护你的羊",
+  },
+};
 
 function parseJsonSafe(raw: string): Record<string, unknown> {
   const stripped = raw
@@ -230,6 +302,8 @@ router.post("/sessions/:id/generate-empathy", async (req: Request, res: Response
 
   try {
     const { step, userText, contextTurns } = bodyParsed.data;
+    const language: Language = bodyParsed.data.language ?? "ko";
+    const meta = LANG_META[language];
 
     const systemPrompt = `당신은 사용자가 잠들기 전 회고 대화를 진행하는 조용한 양 캐릭터입니다.
 다음 규칙을 반드시 지켜주세요:
@@ -238,7 +312,8 @@ router.post("/sessions/:id/generate-empathy", async (req: Request, res: Response
 - 심야 라디오 DJ처럼 낮고 차분한 톤을 유지하세요.
 - 과도한 위로, 장황한 설명, 높은 텐션을 피하세요.
 - 짧고 간결하게 응답하세요. (1-3문장)
-- 사용자가 애매하게 답하면 캐묻지 마세요.`;
+- 사용자가 애매하게 답하면 캐묻지 마세요.
+- 모든 응답 문장("text" 값)은 반드시 ${meta.name}(으)로 작성하세요.`;
 
     let userPrompt = "";
 
@@ -246,12 +321,12 @@ router.post("/sessions/:id/generate-empathy", async (req: Request, res: Response
       userPrompt = `사용자가 오늘 하루에 대해 말했습니다: "${userText}"
 
 다음을 생성하세요:
-1. 사용자 답변에 대한 1-2문장 짧은 공감 ("오늘 하루도 고생 많으셨습니다."로 마무리)
+1. 사용자 답변에 대한 1-2문장 짧은 공감 ("${meta.step2End}"로 마무리)
 2. 이 답변이 "해결 못한 문제가 있다"는 뜻인지, "없다/애매하다"는 뜻인지 판단
 
 JSON으로 응답하세요:
 {
-  "text": "공감 문장. 오늘 하루도 고생 많으셨습니다.",
+  "text": "공감 문장. ${meta.step2End}",
   "hasProblem": true,
   "isAmbiguous": false
 }`;
@@ -270,7 +345,7 @@ ${prevContext}
 
 사용자가 성취에 대해 말했습니다: "${userText}"
 
-사용자의 말을 짧게 공감하고 "공유해 주셔서 감사합니다."로 마무리하세요.
+사용자의 말을 짧게 공감하고 "${meta.step4End}"로 마무리하세요.
 JSON으로 응답하세요:
 {
   "text": "공감 문장.",
@@ -278,7 +353,7 @@ JSON으로 응답하세요:
 }`;
     } else if (step === "step_5") {
       userPrompt = `사용자가 성취에 대해 말했습니다: "${userText}"
-성취를 간결히 인정하며 긍정적으로 지지하는 1문장을 만들어주세요. 없다고 했으면 "매일 무언가를 이뤄낸다는 건 어려운 일이에요. 괜찮습니다."라고 응답하세요.
+성취를 간결히 인정하며 긍정적으로 지지하는 1문장을 만들어주세요. 없다고 했으면 "${meta.step5None}"라고 응답하세요.
 JSON으로 응답하세요: { "text": "..." }`;
     } else if (step === "step_5_5") {
       userPrompt = `사용자가 웃음 포인트나 상상에 대해 말했습니다: "${userText}"
@@ -291,10 +366,10 @@ JSON으로 응답하세요:
 }`;
     } else if (step === "step_6") {
       userPrompt = `사용자가 양에 입히고 싶은 색깔이나 촉감으로 말했습니다: "${userText}"
-이것을 반영해서 포근하고 따뜻한 마무리 멘트를 만들어주세요. "이제 수면 모드로 전환하겠습니다. 오늘 하루도 고생하셨어요."로 끝내주세요.
+이것을 반영해서 포근하고 따뜻한 마무리 멘트를 만들어주세요. "${meta.step6End}"로 끝내주세요.
 JSON으로 응답하세요:
 {
-  "text": "마무리 멘트. 이제 수면 모드로 전환하겠습니다. 오늘 하루도 고생하셨어요.",
+  "text": "마무리 멘트. ${meta.step6End}",
   "colorTexture": "${userText}"
 }`;
     } else {
@@ -362,12 +437,13 @@ interface SheepSpecData {
   imagePrompt?: string;
 }
 
-async function buildSheepSpec(sourceText: string): Promise<SheepSpecData> {
+async function buildSheepSpec(sourceText: string, language: Language = "ko"): Promise<SheepSpecData> {
+  const meta = LANG_META[language];
   const specResponse = await openai.chat.completions.create({
     model: "gpt-5-mini",
     max_completion_tokens: 8192,
     messages: [
-      { role: "system", content: SHEEP_SPEC_SYSTEM_PROMPT },
+      { role: "system", content: `${SHEEP_SPEC_SYSTEM_PROMPT}\n- imagePrompt를 제외한 모든 텍스트 필드(emotionSummary, dominantEmotions, colorIntent, textureIntent, shapeIntent, patternIntent, symbolIntent, sheepPersonality)는 반드시 ${meta.name}(으)로 작성하세요. imagePrompt는 항상 영어로 작성하세요.` },
       {
         role: "user",
         content: `다음은 오늘 밤 사용자와 양의 대화(또는 감정 기록)입니다:\n\n${sourceText}\n\n위 내용을 6가지 감정 원형(기쁨/분노/슬픔/평온/공포/신뢰) 프레임워크로 분석하여 다음 JSON 형식으로만 응답해주세요 (마크다운 없이 순수 JSON):
@@ -386,7 +462,12 @@ async function renderSheepImage(imagePrompt: string): Promise<string> {
   return `data:image/png;base64,${imageBuffer.toString("base64")}`;
 }
 
-async function runGenerateSheep(sessionId: number, log: import("pino").Logger): Promise<void> {
+async function runGenerateSheep(
+  sessionId: number,
+  log: import("pino").Logger,
+  language: Language = "ko",
+): Promise<void> {
+  const meta = LANG_META[language];
   try {
     const [session] = await db
       .select()
@@ -407,20 +488,20 @@ async function runGenerateSheep(sessionId: number, log: import("pino").Logger): 
     const transcriptText = transcripts.map((t) => `[${t.role}][${t.step}]: ${t.text}`).join("\n");
 
     // Step 1: Generate SheepSpec
-    const specData = await buildSheepSpec(transcriptText);
+    const specData = await buildSheepSpec(transcriptText, language);
 
     const [spec] = await db
       .insert(sheepSpecsTable)
       .values({
         sessionId,
-        emotionSummary: specData.emotionSummary ?? "오늘 하루의 감정이 담긴 양.",
-        dominantEmotions: specData.dominantEmotions ?? ["평온"],
-        colorIntent: specData.colorIntent ?? "따뜻한 크림색",
-        textureIntent: specData.textureIntent ?? "부드러운 양털",
-        shapeIntent: specData.shapeIntent ?? "둥글고 포근한 형태",
-        patternIntent: specData.patternIntent ?? "잔잔한 물결 무늬",
-        symbolIntent: specData.symbolIntent ?? "작은 달과 별",
-        sheepPersonality: specData.sheepPersonality ?? "조용하고 따뜻하게 사용자를 지켜주는 양",
+        emotionSummary: specData.emotionSummary ?? meta.defaultEmotionSummary,
+        dominantEmotions: specData.dominantEmotions ?? [meta.defaultEmotion],
+        colorIntent: specData.colorIntent ?? meta.defaultColor,
+        textureIntent: specData.textureIntent ?? meta.defaultTexture,
+        shapeIntent: specData.shapeIntent ?? meta.defaultShape,
+        patternIntent: specData.patternIntent ?? meta.defaultPattern,
+        symbolIntent: specData.symbolIntent ?? meta.defaultSymbol,
+        sheepPersonality: specData.sheepPersonality ?? meta.defaultPersonality,
         imagePrompt: specData.imagePrompt ?? "A cute pixel art sheep with warm cream colored wool, sleeping peacefully.",
       })
       .returning();
@@ -434,10 +515,10 @@ async function runGenerateSheep(sessionId: number, log: import("pino").Logger): 
       .values({
         sessionId,
         specId: spec.id,
-        name: `오늘의 양 #${sessionId}`,
+        name: meta.sheepName(sessionId),
         imageUrl: imageBase64,
-        dominantEmotion: specData.dominantEmotions?.[0] ?? "평온",
-        displayColor: specData.colorIntent ?? "따뜻한 크림색",
+        dominantEmotion: specData.dominantEmotions?.[0] ?? meta.defaultEmotion,
+        displayColor: specData.colorIntent ?? meta.defaultColor,
       })
       .returning();
 
@@ -458,6 +539,12 @@ router.post("/sessions/:id/generate-sheep", async (req: Request, res: Response):
   }
 
   const sessionId = paramsParsed.data.id;
+  const bodyParsed = GenerateSheepBody.safeParse(req.body ?? {});
+  if (!bodyParsed.success) {
+    res.status(400).json({ error: "Invalid body" });
+    return;
+  }
+  const language: Language = bodyParsed.data.language ?? "ko";
 
   // Check session exists first
   const [session] = await db
@@ -479,7 +566,7 @@ router.post("/sessions/:id/generate-sheep", async (req: Request, res: Response):
   // Fire and forget — respond immediately, generate in background
   res.status(202).json({ status: "generating" });
 
-  void runGenerateSheep(sessionId, req.log);
+  void runGenerateSheep(sessionId, req.log, language);
 });
 
 // 단일 실행 보장: 한 번에 하나의 일괄 재생성 작업만 돌도록 막는다.

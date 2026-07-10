@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
+import { useSettings } from "@/lib/settings";
 
 const NUM_STARS = 60;
 
@@ -18,6 +19,7 @@ const POLL_TIMEOUT_MS = 180000;
 
 export default function SleepScreen() {
   const [, setLocation] = useLocation();
+  const { t, language, isNight } = useSettings();
   const [dots, setDots] = useState(".");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const hasTriggered = useRef(false);
@@ -45,7 +47,11 @@ export default function SleepScreen() {
 
     async function startGeneration() {
       try {
-        await fetch(`/api/sessions/${sid}/generate-sheep`, { method: "POST" });
+        await fetch(`/api/sessions/${sid}/generate-sheep`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language }),
+        });
       } catch {
         // Ignore network errors — polling will detect completion
       }
@@ -77,7 +83,7 @@ export default function SleepScreen() {
 
       timeoutTimer.current = setTimeout(() => {
         cleanup();
-        setErrorMsg("양을 만드는 데 너무 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요.");
+        setErrorMsg(t.sleep.timeoutError);
       }, POLL_TIMEOUT_MS);
 
       void checkDone();
@@ -94,9 +100,9 @@ export default function SleepScreen() {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
-      style={{ backgroundColor: "#03030f" }}
+      style={{ backgroundColor: isNight ? "#03030f" : "#ede0c8" }}
     >
-      {STARS.map((star) => (
+      {isNight && STARS.map((star) => (
         <div
           key={star.id}
           className="star"
@@ -127,15 +133,15 @@ export default function SleepScreen() {
               onClick={() => setLocation("/")}
               className="text-muted-foreground/25 text-xs underline underline-offset-4 hover:text-muted-foreground/40 transition-colors"
             >
-              홈으로 돌아가기
+              {t.sleep.goHome}
             </button>
           </div>
         ) : (
           <p
             className="font-light tracking-[0.2em] text-sm"
-            style={{ color: "rgba(100, 116, 139, 0.5)" }}
+            style={{ color: isNight ? "rgba(100, 116, 139, 0.5)" : "rgba(110, 94, 72, 0.6)" }}
           >
-            오늘의 양을 만들고 있어요{dots}
+            {t.sleep.making}{dots}
           </p>
         )}
       </div>

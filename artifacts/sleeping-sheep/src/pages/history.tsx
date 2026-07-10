@@ -14,9 +14,9 @@ import {
   addMonths,
   subMonths,
 } from "date-fns";
-import { ko } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSettings } from "@/lib/settings";
 
 type Sheep = {
   id: number;
@@ -26,10 +26,9 @@ type Sheep = {
   createdAt: Date | string;
 };
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
 export default function History() {
   const [, setLocation] = useLocation();
+  const { t, dateLocale } = useSettings();
   const { data: sheeps, isLoading } = useListSheep();
   const [view, setView] = useState<"grid" | "calendar">("grid");
   const [month, setMonth] = useState(() => startOfMonth(new Date()));
@@ -82,7 +81,7 @@ export default function History() {
           size="icon"
           onClick={() => setView((v) => (v === "grid" ? "calendar" : "grid"))}
           className="text-muted-foreground/40 hover:text-foreground"
-          aria-label={view === "grid" ? "달력으로 보기" : "모아 보기"}
+          aria-label={view === "grid" ? t.history.calendarView : t.history.gridView}
           aria-pressed={view === "calendar"}
         >
           {view === "grid" ? <CalendarDays className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
@@ -91,12 +90,12 @@ export default function History() {
 
       <div className="mb-8 text-center">
         <p className="text-xs tracking-[0.3em] text-muted-foreground/40 font-sans uppercase mb-3">
-          My Flock
+          {t.history.eyebrow}
         </p>
-        <h1 className="text-xl font-serif text-foreground/90 mb-2">모아 둔 양들</h1>
+        <h1 className="text-xl font-serif text-foreground/90 mb-2">{t.history.title}</h1>
         {sheeps && sheeps.length > 0 && (
           <p className="text-sm text-muted-foreground/40 font-light">
-            지금까지 {sheeps.length}마리를 재웠어요
+            {t.history.countText(sheeps.length)}
           </p>
         )}
       </div>
@@ -105,19 +104,19 @@ export default function History() {
         <div className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center space-y-4">
             <div className="w-8 h-8 rounded-full border border-primary/30 border-t-transparent animate-spin" />
-            <p className="text-muted-foreground/40 text-sm font-light">양들을 불러오는 중...</p>
+            <p className="text-muted-foreground/40 text-sm font-light">{t.history.loading}</p>
           </div>
         </div>
       ) : sheeps?.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3">
-          <p className="text-muted-foreground/50 font-light">아직 만들어진 양이 없습니다.</p>
-          <p className="text-sm text-muted-foreground/30 font-light">오늘 밤 첫 번째 양을 만들어보세요.</p>
+          <p className="text-muted-foreground/50 font-light">{t.history.emptyTitle}</p>
+          <p className="text-sm text-muted-foreground/30 font-light">{t.history.emptySub}</p>
           <Button
             onClick={() => setLocation("/")}
             variant="ghost"
             className="mt-4 text-primary/50 hover:text-primary text-sm"
           >
-            오늘의 양 만들기
+            {t.history.makeToday}
           </Button>
         </div>
       ) : view === "grid" ? (
@@ -144,7 +143,7 @@ export default function History() {
               </div>
               <div className="p-3.5">
                 <p className="text-xs text-muted-foreground/35 mb-1 font-light">
-                  {format(new Date(sheep.createdAt), "M월 d일", { locale: ko })} · {sheep.dominantEmotion}
+                  {format(new Date(sheep.createdAt), t.history.dayFormat, { locale: dateLocale })} · {sheep.dominantEmotion}
                 </p>
                 <p className="text-sm text-foreground/75 font-medium">{sheep.name}</p>
               </div>
@@ -160,7 +159,7 @@ export default function History() {
               onClick={() => setPage(Math.max(0, safePage - 1))}
               disabled={safePage === 0}
               className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 h-8 w-8"
-              aria-label="이전 페이지"
+              aria-label={t.history.prevPage}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -173,7 +172,7 @@ export default function History() {
               onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))}
               disabled={safePage >= totalPages - 1}
               className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 h-8 w-8"
-              aria-label="다음 페이지"
+              aria-label={t.history.nextPage}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -193,7 +192,7 @@ export default function History() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <p className="text-sm font-serif text-foreground/80">
-              {format(month, "yyyy년 M월", { locale: ko })}
+              {format(month, t.history.monthFormat, { locale: dateLocale })}
             </p>
             <Button
               variant="ghost"
@@ -207,7 +206,7 @@ export default function History() {
 
           {/* Weekday labels */}
           <div className="grid grid-cols-7 mb-2">
-            {WEEKDAYS.map((d) => (
+            {t.history.weekdays.map((d) => (
               <div key={d} className="text-center text-[0.65rem] text-muted-foreground/35 font-light">
                 {d}
               </div>
@@ -231,8 +230,8 @@ export default function History() {
                   tabIndex={hero ? 0 : undefined}
                   aria-label={
                     hero
-                      ? `${format(day, "M월 d일", { locale: ko })}, ${hero.name}${
-                          daySheep.length > 1 ? ` 외 ${daySheep.length - 1}마리` : ""
+                      ? `${format(day, t.history.dayFormat, { locale: dateLocale })}, ${hero.name}${
+                          daySheep.length > 1 ? t.history.othersSuffix(daySheep.length - 1) : ""
                         }`
                       : undefined
                   }
@@ -282,7 +281,7 @@ export default function History() {
           </div>
 
           <p className="text-center text-[0.7rem] text-muted-foreground/30 font-light mt-6">
-            날짜를 눌러 그날의 양을 다시 만나보세요
+            {t.history.tapHint}
           </p>
         </div>
       )}

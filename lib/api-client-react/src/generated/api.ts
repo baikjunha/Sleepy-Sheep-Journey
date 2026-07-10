@@ -21,6 +21,7 @@ import type {
   CompleteSessionInput,
   EmpathyInput,
   EmpathyResponse,
+  GenerateSheepInput,
   HealthStatus,
   Session,
   SessionInput,
@@ -809,11 +810,14 @@ export const getGenerateSheepUrl = (id: number) => {
 
 export const generateSheep = async (
   id: number,
+  generateSheepInput?: GenerateSheepInput,
   options?: RequestInit,
 ): Promise<Sheep> => {
   return customFetch<Sheep>(getGenerateSheepUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateSheepInput),
   });
 };
 
@@ -824,14 +828,14 @@ export const getGenerateSheepMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateSheep>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<GenerateSheepInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof generateSheep>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<GenerateSheepInput> },
   TContext
 > => {
   const mutationKey = ["generateSheep"];
@@ -845,11 +849,11 @@ export const getGenerateSheepMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof generateSheep>>,
-    { id: number }
+    { id: number; data: BodyType<GenerateSheepInput> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return generateSheep(id, requestOptions);
+    return generateSheep(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -858,7 +862,7 @@ export const getGenerateSheepMutationOptions = <
 export type GenerateSheepMutationResult = NonNullable<
   Awaited<ReturnType<typeof generateSheep>>
 >;
-
+export type GenerateSheepMutationBody = BodyType<GenerateSheepInput>;
 export type GenerateSheepMutationError = ErrorType<ApiError>;
 
 /**
@@ -871,14 +875,14 @@ export const useGenerateSheep = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof generateSheep>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<GenerateSheepInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof generateSheep>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<GenerateSheepInput> },
   TContext
 > => {
   return useMutation(getGenerateSheepMutationOptions(options));

@@ -228,6 +228,12 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateSheepInput"
       responses:
         "200":
           description: Generated sheep
@@ -453,6 +459,9 @@ components:
           type: string
         userText:
           type: string
+        language:
+          type: string
+          enum: [ko, en, zh]
         contextTurns:
           type: array
           items:
@@ -468,6 +477,13 @@ components:
       required:
         - step
         - userText
+
+    GenerateSheepInput:
+      type: object
+      properties:
+        language:
+          type: string
+          enum: [ko, en, zh]
 
     EmpathyResponse:
       type: object

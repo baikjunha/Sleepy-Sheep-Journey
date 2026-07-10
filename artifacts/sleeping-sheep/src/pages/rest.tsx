@@ -4,6 +4,7 @@ import {
   useGetSheep,
   getGetSheepQueryKey,
 } from "@workspace/api-client-react";
+import { useSettings } from "@/lib/settings";
 
 const TOTAL_MS = 5 * 60 * 1000;
 const FADE_START_MS = 20 * 1000;
@@ -21,6 +22,7 @@ const STARS = Array.from({ length: 40 }).map((_, i) => ({
 export default function RestScreen() {
   const [, params] = useRoute("/rest/:id");
   const [, setLocation] = useLocation();
+  const { t, isNight } = useSettings();
   const id = params?.id ? parseInt(params.id) : 0;
 
   const { data: sheep } = useGetSheep(id, {
@@ -112,13 +114,13 @@ export default function RestScreen() {
         onClick={() => setLocation("/")}
       >
         <p className="text-white/12 text-sm font-light tracking-[0.3em] animate-pulse">
-          잘 자요
+          {t.rest.goodNight}
         </p>
         <button
           onClick={() => setLocation("/")}
           className="mt-10 text-white/10 text-[11px] tracking-wider hover:text-white/25 transition-colors"
         >
-          화면 켜기
+          {t.rest.screenOn}
         </button>
       </div>
     );
@@ -128,10 +130,10 @@ export default function RestScreen() {
     <div
       onClick={resumeAudio}
       className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden px-8 text-center"
-      style={{ backgroundColor: "#03030f" }}
+      style={{ backgroundColor: isNight ? "#03030f" : "#ede0c8" }}
     >
-      {/* Stars */}
-      {STARS.map((star) => (
+      {/* Stars — night only */}
+      {isNight && STARS.map((star) => (
         <div
           key={star.id}
           className="star"
@@ -156,7 +158,7 @@ export default function RestScreen() {
         />
 
         <p className="text-[11px] tracking-[0.32em] text-primary/40 font-medium uppercase mb-5">
-          오늘의 감정 정리
+          {t.rest.emotionTitle}
         </p>
 
         {emotions.length > 0 && (
@@ -164,7 +166,7 @@ export default function RestScreen() {
             {emotions.map((emotion, idx) => (
               <span
                 key={idx}
-                className="px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.07] text-foreground/60 text-xs tracking-wide font-light"
+                className="px-3 py-1.5 rounded-full bg-foreground/[0.05] border border-foreground/[0.08] text-foreground/60 text-xs tracking-wide font-light"
               >
                 {emotion}
               </span>
@@ -178,18 +180,18 @@ export default function RestScreen() {
           </p>
         ) : (
           <p className="text-base font-light leading-relaxed text-foreground/70 mb-2">
-            오늘 하루도 잘 견뎌냈어요.
+            {t.rest.defaultSummary}
           </p>
         )}
 
         <p className="text-sm font-light leading-relaxed text-muted-foreground/40 mt-4">
-          이제 눈을 감고
+          {t.rest.closeEyes1}
           <br />
-          편안히 잠들어도 좋아요.
+          {t.rest.closeEyes2}
         </p>
 
         <p className="text-[11px] text-muted-foreground/20 font-light mt-12 tracking-wider">
-          잔잔한 음악과 함께 화면이 천천히 어두워져요
+          {t.rest.musicNote}
         </p>
       </div>
 

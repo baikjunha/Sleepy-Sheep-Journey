@@ -75,6 +75,15 @@ export interface TranscriptTurnInput {
   isAmbiguous?: boolean;
 }
 
+export type EmpathyInputLanguage =
+  (typeof EmpathyInputLanguage)[keyof typeof EmpathyInputLanguage];
+
+export const EmpathyInputLanguage = {
+  ko: "ko",
+  en: "en",
+  zh: "zh",
+} as const;
+
 export type EmpathyInputContextTurnsItem = {
   role: string;
   text: string;
@@ -83,7 +92,21 @@ export type EmpathyInputContextTurnsItem = {
 export interface EmpathyInput {
   step: string;
   userText: string;
+  language?: EmpathyInputLanguage;
   contextTurns?: EmpathyInputContextTurnsItem[];
+}
+
+export type GenerateSheepInputLanguage =
+  (typeof GenerateSheepInputLanguage)[keyof typeof GenerateSheepInputLanguage];
+
+export const GenerateSheepInputLanguage = {
+  ko: "ko",
+  en: "en",
+  zh: "zh",
+} as const;
+
+export interface GenerateSheepInput {
+  language?: GenerateSheepInputLanguage;
 }
 
 export interface EmpathyResponse {

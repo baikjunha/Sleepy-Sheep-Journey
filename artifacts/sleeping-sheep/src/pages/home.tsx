@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useCreateSession } from "@workspace/api-client-react";
-import { Loader2, Moon, History } from "lucide-react";
+import { Loader2, Moon, History, Settings } from "lucide-react";
+import { useSettings } from "@/lib/settings";
 
 const HOME_STARS = [
   { size: 2, top: 8, left: 13, delay: 0 },
@@ -20,6 +21,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const createSession = useCreateSession();
   const [isStarting, setIsStarting] = useState(false);
+  const { t, isNight } = useSettings();
 
   const handleStart = () => {
     setIsStarting(true);
@@ -37,30 +39,64 @@ export default function Home() {
     );
   };
 
+  const colors = isNight
+    ? {
+        background:
+          "radial-gradient(125% 75% at 50% 18%, #2c2553 0%, #1d1839 44%, #100e1f 100%)",
+        label: "#8d84c2",
+        title: "#f5f2ff",
+        subtitle: "#aaa3d2",
+        chipColor: "#9890c4",
+        chipBg: "rgba(255,255,255,0.05)",
+        privacy: "rgba(170,163,210,0.4)",
+        gear: "rgba(170,163,210,0.55)",
+        gearBg: "rgba(255,255,255,0.05)",
+      }
+    : {
+        background:
+          "radial-gradient(125% 75% at 50% 18%, #f7eedd 0%, #f0e4cd 44%, #e7d8bd 100%)",
+        label: "#a08c6f",
+        title: "#4a3f31",
+        subtitle: "#8a795f",
+        chipColor: "#7a6a52",
+        chipBg: "rgba(0,0,0,0.05)",
+        privacy: "rgba(110,94,72,0.5)",
+        gear: "rgba(110,94,72,0.6)",
+        gearBg: "rgba(0,0,0,0.05)",
+      };
+
   return (
     <div
       className="min-h-screen flex flex-col items-center p-6 relative overflow-hidden"
-      style={{
-        background:
-          "radial-gradient(125% 75% at 50% 18%, #2c2553 0%, #1d1839 44%, #100e1f 100%)",
-      }}
+      style={{ background: colors.background }}
     >
-      {/* Twinkling lavender stars */}
-      {HOME_STARS.map((star, i) => (
-        <div
-          key={i}
-          className="star"
-          style={{
-            width: `${star.size}px`,
-            height: `${star.size}px`,
-            top: `${star.top}%`,
-            left: `${star.left}%`,
-            backgroundColor: "#d4cef7",
-            animationDuration: "4.5s",
-            animationDelay: `${star.delay}s`,
-          }}
-        />
-      ))}
+      {/* Twinkling lavender stars — night only */}
+      {isNight &&
+        HOME_STARS.map((star, i) => (
+          <div
+            key={i}
+            className="star"
+            style={{
+              width: `${star.size}px`,
+              height: `${star.size}px`,
+              top: `${star.top}%`,
+              left: `${star.left}%`,
+              backgroundColor: "#d4cef7",
+              animationDuration: "4.5s",
+              animationDelay: `${star.delay}s`,
+            }}
+          />
+        ))}
+
+      {/* Settings button */}
+      <button
+        onClick={() => setLocation("/settings")}
+        className="absolute top-5 right-5 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:rotate-45"
+        style={{ color: colors.gear, background: colors.gearBg }}
+        aria-label={t.settings.title}
+      >
+        <Settings className="w-[19px] h-[19px]" />
+      </button>
 
       {/* Centered content column */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm flex-1 text-center">
@@ -71,21 +107,21 @@ export default function Home() {
             alt="Sleeping Sheep"
             className="w-32 h-32 mx-auto mb-4 object-contain animate-float drop-shadow-2xl"
           />
-          <div className="text-[11px] tracking-[0.32em] font-medium" style={{ color: "#8d84c2" }}>
+          <div className="text-[11px] tracking-[0.32em] font-medium" style={{ color: colors.label }}>
             sleeping sheep
           </div>
           <h1
             className="mt-5 text-[1.65rem] leading-snug font-light"
-            style={{ color: "#f5f2ff" }}
+            style={{ color: colors.title }}
           >
-            오늘 하루,
+            {t.home.titleLine1}
             <br />
-            양에게 들려주세요
+            {t.home.titleLine2}
           </h1>
-          <p className="mt-4 text-sm leading-relaxed font-light" style={{ color: "#aaa3d2" }}>
-            눈을 감기 전, 작은 양이
+          <p className="mt-4 text-sm leading-relaxed font-light" style={{ color: colors.subtitle }}>
+            {t.home.subtitle1}
             <br />
-            당신의 이야기를 기다리고 있어요.
+            {t.home.subtitle2}
           </p>
         </div>
 
@@ -107,26 +143,26 @@ export default function Home() {
             ) : (
               <Moon className="w-[18px] h-[18px]" />
             )}
-            {isStarting ? "준비하는 중..." : "수면 시작"}
+            {isStarting ? t.home.preparing : t.home.start}
           </button>
 
           <div className="flex justify-center mt-5">
             <button
               onClick={() => setLocation("/history")}
               className="flex items-center gap-1.5 text-[13px] font-medium px-4 py-2 rounded-[14px] transition-colors duration-300"
-              style={{ color: "#9890c4", background: "rgba(255,255,255,0.05)" }}
+              style={{ color: colors.chipColor, background: colors.chipBg }}
             >
               <History className="w-[15px] h-[15px]" />
-              지난 양들
+              {t.home.pastSheep}
             </button>
           </div>
 
           {/* Privacy note */}
           <p
             className="mt-6 text-[11px] leading-relaxed font-light px-6"
-            style={{ color: "rgba(170,163,210,0.4)" }}
+            style={{ color: colors.privacy }}
           >
-            음성 파일은 저장되지 않아요. 대화 텍스트만 양 생성을 위해 보관됩니다.
+            {t.home.privacy}
           </p>
         </div>
       </div>
